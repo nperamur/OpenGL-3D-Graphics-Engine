@@ -42,22 +42,11 @@
 
     <repositories>
         <repository>
-            <id>cubesim</id>
-            <url>https://github.com/nperamur/RubiksCubeSimulator</url> <!-- URL of the custom repository -->
-        </repository>
-
-        <repository>
             <id>lwjgl</id>
             <url>https://repo.lwjgl.org</url>
         </repository>
     </repositories>
     <dependencies>
-        <!-- Your dependencies go here -->
-        <dependency>
-            <groupId>org.cubesim</groupId>
-            <artifactId>RubiksCubeSim</artifactId>
-            <version>1.0</version>
-        </dependency>
 
         <dependency>
             <groupId>org.lwjgl</groupId>
