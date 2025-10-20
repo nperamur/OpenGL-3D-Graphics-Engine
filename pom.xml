@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.example</groupId>
+    <artifactId>cube-test</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>22</maven.compiler.source>
+        <maven.compiler.target>22</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <build>
+        <plugins>
+            <!-- Other plugins you might have -->
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.1.2</version>
+                <executions>
+                    <execution>
+                        <id>unpack-natives</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>unpack-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeClassifiers>natives-windows</includeClassifiers>
+                            <outputDirectory>${project.build.directory}/natives</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+    <repositories>
+        <repository>
+            <id>cubesim</id>
+            <url>https://github.com/nperamur/RubiksCubeSimulator</url> <!-- URL of the custom repository -->
+        </repository>
+
+        <repository>
+            <id>lwjgl</id>
+            <url>https://repo.lwjgl.org</url>
+        </repository>
+    </repositories>
+    <dependencies>
+        <!-- Your dependencies go here -->
+        <dependency>
+            <groupId>org.cubesim</groupId>
+            <artifactId>RubiksCubeSim</artifactId>
+            <version>1.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl</artifactId>
+            <version>3.3.2</version> <!-- Use the latest LWJGL version -->
+        </dependency>
+
+        <!-- GLFW (Windowing system) -->
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl-glfw</artifactId>
+            <version>3.3.2</version>
+        </dependency>
+
+        <!-- OpenGL (Rendering) -->
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl-opengl</artifactId>
+            <version>3.3.2</version>
+        </dependency>
+
+        <!-- STB (Image loading, useful for textures) -->
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl-stb</artifactId>
+            <version>3.3.2</version>
+        </dependency>
+
+        <!-- LWJGL Natives (platform-specific binaries) -->
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl</artifactId>
+            <version>3.3.2</version>
+            <classifier>natives-windows</classifier> <!-- Change for your OS -->
+        </dependency>
+
+        <!-- Add GLFW Native for platform-specific binaries -->
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl-glfw</artifactId>
+            <version>3.3.2</version>
+            <classifier>natives-windows</classifier> <!-- Change for your OS -->
+        </dependency>
+
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl-opengl</artifactId>
+            <version>3.3.2</version>
+            <classifier>natives-windows</classifier> <!-- Change for your OS -->
+        </dependency>
+
+        <dependency>
+            <groupId>org.joml</groupId>
+            <artifactId>joml</artifactId>
+            <version>1.10.0</version> <!-- Or check for the latest version -->
+        </dependency>
+
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>5.14.0</version>
+        </dependency>
+    </dependencies>
+
+</project>
