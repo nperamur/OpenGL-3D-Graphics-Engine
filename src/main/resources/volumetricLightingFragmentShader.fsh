@@ -59,7 +59,11 @@ void main() {
 
     float phi = phaseFunction(normalize(lightPosition), rayDir, anisotropy);
 
-    float offset = rand(pass_textureCoords) * stepSize;
+    ivec2 texSize = textureSize(gPosition, 0);
+    vec2 screenSize = vec2(texSize);
+    vec2 pixelCoords = pass_textureCoords * screenSize;
+
+    float offset = rand(floor(pixelCoords)) * stepSize;
 
     for (float t = offset; t < maxDist; t += stepSize) {
         vec3 currentPos = cameraPos + rayDir * t;
