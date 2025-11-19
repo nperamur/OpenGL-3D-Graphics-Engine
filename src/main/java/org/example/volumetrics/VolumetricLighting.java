@@ -1,5 +1,6 @@
-package org.example;
+package org.example.volumetrics;
 
+import org.example.*;
 import org.example.shadow.ShadowRenderer;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
@@ -18,6 +19,8 @@ public class VolumetricLighting extends PostProcessEffect {
     private Vector3f lightColor;
     private float fogAnisotropy;
     private float fogDensity;
+    private float albedo;
+    private float stepSize;
 
 
     public VolumetricLighting(Sunlight light, Gbuffer gbuffer, ShadowRenderer shadowRenderer) {
@@ -33,7 +36,7 @@ public class VolumetricLighting extends PostProcessEffect {
 
     @Override
     public void render(Model screenQuad) {
-        if (super.getFbo().getWidth() != Main.getDisplayManager().getWidth() && super.getFbo().getHeight() != Main.getDisplayManager().getHeight()) {
+        if (super.getFbo().getWidth() != Main.getDisplayManager().getWidth() || super.getFbo().getHeight() != Main.getDisplayManager().getHeight()) {
             super.getFbo().resize(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight());
         }
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -42,6 +45,8 @@ public class VolumetricLighting extends PostProcessEffect {
         shader.loadLightColor(this.lightColor);
         shader.loadFogDensity(this.fogDensity);
         shader.loadAnisotropy(this.fogAnisotropy);
+        shader.loadAlbedo(this.albedo);
+        shader.loadStepSize(this.stepSize);
         shader.loadViewMatrix(GameMath.createViewMatrix(Main.getDisplayManager().getPlayer()));
         shader.loadToShadowMapSpace(shadowRenderer.getToShadowMapSpaceMatrix());
         shader.loadInversePlayerViewMatrix(GameMath.createViewMatrix(Main.getDisplayManager().getPlayer()).invert());
@@ -65,9 +70,23 @@ public class VolumetricLighting extends PostProcessEffect {
         shader.cleanUp();
     }
 
-    public void setVolumetricParams(Vector3f lightColor, float fogAnisotropy, float fogDensity) {
+    public void setVolumetricParams(Vector3f lightColor, float stepSize, float fogAnisotropy, float fogDensity, float albedo) {
+        this.stepSize = stepSize;
         this.lightColor = lightColor;
         this.fogAnisotropy = fogAnisotropy;
         this.fogDensity = fogDensity;
+        this.albedo = albedo;
+    }
+
+    public void setAlbedo(float albedo) {
+        this.albedo = albedo;
+    }
+
+    public void setFogDensity(float fogDensity) {
+        this.fogDensity = fogDensity;
+    }
+
+    public void setStepSize(float stepSize) {
+        this.stepSize = stepSize;
     }
 }

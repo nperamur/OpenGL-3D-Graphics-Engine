@@ -1,5 +1,7 @@
-package org.example;
+package org.example.volumetrics;
 
+import org.example.Light;
+import org.example.ShaderProgram;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -26,6 +28,8 @@ public class VolumetricLightingShader extends ShaderProgram {
 
     private int locationFogDensity;
     private int locationAnisotropy;
+    private int locationAlbedo;
+    private int locationStepSize;
 
     public VolumetricLightingShader() {
         super(VERTEX_FILE, FRAGMENT_FILE);
@@ -58,6 +62,8 @@ public class VolumetricLightingShader extends ShaderProgram {
 
         this.locationFogDensity = super.getUniformLocation("density");
         this.locationAnisotropy = super.getUniformLocation("anisotropy");
+        this.locationAlbedo = super.getUniformLocation("albedo");
+        this.locationStepSize = super.getUniformLocation("stepSize");
 
     }
 
@@ -110,6 +116,14 @@ public class VolumetricLightingShader extends ShaderProgram {
         super.loadFloat(locationAnisotropy, anisotropy);
     }
 
+
+    public void loadAlbedo(float albedo) {
+        super.loadFloat(locationAlbedo, albedo);
+    }
+
+    public void loadStepSize(float stepSize) {
+        super.loadFloat(locationStepSize, stepSize);
+    }
 
 
 
