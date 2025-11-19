@@ -1,12 +1,14 @@
 package org.example;
 
 import org.example.bloom.Bloom;
-import org.example.bloom.BrightFilter;
 import org.example.bloom.CombineTextures;
 import org.example.blur.*;
 import org.example.shadow.*;
 import org.example.terrain.Terrain;
 import org.example.terrain.TerrainShader;
+import org.example.tonemapping.ToneMapping;
+import org.example.vignette.Vignette;
+import org.example.volumetrics.VolumetricLighting;
 import org.example.water.WaterShader;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -23,8 +25,6 @@ import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL11C.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.glClear;
-import static org.lwjgl.opengl.GL30.glBindFramebuffer;
-import static org.lwjgl.opengl.GL30C.GL_FRAMEBUFFER;
 
 public class Renderer {
     private int fov = 60;
@@ -53,14 +53,17 @@ public class Renderer {
     private int noiseTexture;
     private ShadowRenderer shadowRenderer;
     private LightingPassShader lightingPassShader;
-
     private VolumetricLighting volumetricLighting;
-
+    private ToneMapping toneMapping;
     private Vignette vignette;
+    private float volumetricStepSize;
 
     private Fbo lightFbo;
     private final ArrayList<Entity> shadowedEntities = new ArrayList<>();
 
+
+    private float volumetricFogDensity;
+    private float volumetricAlbedo;
     
 
     public Renderer(TestShader shader, TerrainShader terrainShader, WaterShader waterShader, PostProcessShader postProcessShader, ArrayList<Terrain> terrains, Sunlight light, TexturedModel waterModel, FrameBuffers fbos, int waterDudvTexture, int waterNormalMap, Gbuffer gbuffer) {
@@ -79,9 +82,11 @@ public class Renderer {
         this.gaussianBlur = new GaussianBlur(3);
         this.bloom = new Bloom();
         this.lightingPassShader = new LightingPassShader();
+        this.volumetricStepSize = 1.45f;
 
 
         this.vignette = new Vignette();
+        this.toneMapping = new ToneMapping(1.8f);
 
         noiseTexture = generateNoiseTexture();
         glEnable(GL11.GL_CULL_FACE);
@@ -125,6 +130,8 @@ public class Renderer {
             fbos.initialiseSceneFrameBuffer();
 
         });
+        this.volumetricFogDensity = 0.003f;
+        this.volumetricAlbedo = 0.049f;
     }
 
 //    public void initShadows() {
@@ -356,15 +363,19 @@ public class Renderer {
 
         vignette.bindFrameBuffer();
         if (Main.getDisplayManager().getPlayer().getPosition().y <= -1) {
-            volumetricLighting.setVolumetricParams(new Vector3f(0.3f, 0.5f, 1.0f).mul(2).mul(light.getColor()), 0f, 10f);
+            volumetricLighting.setVolumetricParams(new Vector3f(0.3f, 0.5f, 1.0f).mul(2).mul(light.getColor()), volumetricStepSize, 0f, volumetricFogDensity,  volumetricAlbedo);
         } else {
-            volumetricLighting.setVolumetricParams(light.getColor(), light.getFogAnisotropy(), light.getFogDensity());
+            volumetricLighting.setVolumetricParams(light.getColor(), volumetricStepSize, light.getFogAnisotropy(), volumetricFogDensity,  volumetricAlbedo);
         }
         volumetricLighting.render(fullScreenQuad);
 
         vignette.unbindFrameBuffer();
 
+        toneMapping.bindFrameBuffer();
         vignette.render(fullScreenQuad);
+        toneMapping.unbindFrameBuffer();
+
+        toneMapping.render(fullScreenQuad);
 
 
 
@@ -376,7 +387,7 @@ public class Renderer {
         GL20.glEnableVertexAttribArray(0);
         GL20.glEnableVertexAttribArray(1);
         GL20.glEnableVertexAttribArray(2);
-        GL11.glDrawElements(GL11.GL_TRIANGLES, model.getVertexCount(), GL11.GL_UNSIGNED_INT, 0);
+        GL11.glDrawElements(GL11.GL_TRIANGLES, model.getVertexCount(), GL11.GL_UNSIGNED_INT, 0L);
         GL20.glDisableVertexAttribArray(0);
         GL20.glDisableVertexAttribArray(1);
         GL20.glDisableVertexAttribArray(2);
@@ -441,6 +452,24 @@ public class Renderer {
         vignette.cleanUp();
         glDeleteTextures(noiseTexture);
     }
+
+    public void setVolumetricFogDensity(float density) {
+        this.volumetricFogDensity = density;
+    }
+
+    public void setVolumetricAlbedo(float albedo) {
+        this.volumetricAlbedo = albedo;
+    }
+
+    public void setExposure(float exposure) {
+        toneMapping.setExposure(exposure);
+    }
+
+    public void setVolumetricStepSize(float stepSize) {
+        this.volumetricStepSize = stepSize;
+    }
+
+
 
 
 }

@@ -39,6 +39,7 @@ public class Player {
                 }
             }
 
+            Main.getDisplayManager().getImGuiImplGlfw().cursorPosCallback(window, xpos, ypos);
             this.prevX = xpos;
             this.prevY = ypos;
         });

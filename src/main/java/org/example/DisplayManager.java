@@ -1,5 +1,12 @@
 package org.example;
 
+import imgui.ImFontAtlas;
+import imgui.ImGui;
+import imgui.app.Application;
+import imgui.flag.ImGuiWindowFlags;
+import imgui.gl3.ImGuiImplGl3;
+import imgui.glfw.ImGuiImplGlfw;
+import imgui.internal.ImGuiContext;
 import org.example.terrain.Terrain;
 import org.example.terrain.TerrainShader;
 import org.example.terrain.TerrainTexturePack;
@@ -26,6 +33,8 @@ public class DisplayManager {
     private double lastTime;
     private Renderer renderer;
     private Player player;
+    private final ImGuiImplGlfw imGuiImplGlfw = new ImGuiImplGlfw();
+    private final ImGuiImplGl3 imGuiImplGl3 = new ImGuiImplGl3();
 
 
     private int windowPosX = 100;
@@ -34,6 +43,8 @@ public class DisplayManager {
 
     private boolean fullscreen = false;
     private boolean f11PressedLastFrame;
+    private boolean inDebugMode = true; //Hide with f3
+    private boolean f3PressedLastFrame;
 
     public void start() {
         createWindow();
@@ -48,7 +59,7 @@ public class DisplayManager {
         GLFWErrorCallback.createPrint(System.err).set();
 
         // Initialize GLFW. Most GLFW functions will not work before doing this.
-        if ( !glfwInit() )
+        if (!glfwInit())
             throw new IllegalStateException("Unable to initialize GLFW");
 
         // Configure GLFW
@@ -56,8 +67,6 @@ public class DisplayManager {
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
         window = glfwCreateWindow(WIDTH, HEIGHT, "Game", NULL, NULL);
-
-
 
         // Make the OpenGL context current
         glfwMakeContextCurrent(window);
@@ -78,6 +87,11 @@ public class DisplayManager {
         // creates the GLCapabilities instance and makes the OpenGL
         // bindings available for use.
         GL.createCapabilities();
+
+        ImGuiContext context = ImGui.createContext();
+        ImGui.setCurrentContext(context);
+        imGuiImplGlfw.init(window, true);
+        imGuiImplGl3.init();
 
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
@@ -169,9 +183,6 @@ public class DisplayManager {
         };
 
 
-
-
-
         TexturedModel model = new TexturedModel(ModelLoader.load("FirstPine", loader), new ModelTexture(loader.loadTexture("pinesTexture")));
 
         Item entity = new Item(new TexturedModel(ModelLoader.load("soccer_ball", loader), new ModelTexture(loader.loadTexture("soccer_texture"))), 0, 0, 0, 1f);
@@ -184,7 +195,7 @@ public class DisplayManager {
             float worldZ = (float) Math.random() * Terrain.SIZE * 4 - 2 * Terrain.SIZE;
             float height = terrainsArray[(int) (Math.ceil(worldX / Terrain.SIZE)) + 1][(int) (Math.ceil(worldZ / Terrain.SIZE)) + 1].getHeightOfTerrain(worldX, worldZ);
             if (height > Renderer.WATER_Y) {
-                renderer.addEntity(new Entity(model, new Vector3f(worldX, height - 3, worldZ), 0,0, 0, 1f));
+                renderer.addEntity(new Entity(model, new Vector3f(worldX, height - 5, worldZ), 0,0, 0, 1f));
             }
         }
         renderer.addEntity(entity2);
@@ -233,8 +244,47 @@ public class DisplayManager {
         }
 
         double previousTime = glfwGetTime();
+        float[] fogDensity = new float[1];
+        fogDensity[0] = 0.003f;
+
+        float[] fogAlbedo = new float[1];
+        fogAlbedo[0] = 0.049f;
+
+        float[] exposure = new float[1];
+        exposure[0] = 1.8f;
+
+        float[] stepSize = new float[1];
+        stepSize[0] = 1.45f;
 
         while ( !glfwWindowShouldClose(window) ) {
+            boolean f3Pressed = glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS;
+
+            if (f3Pressed && !f3PressedLastFrame) {
+                inDebugMode = !inDebugMode;
+            }
+
+            f3PressedLastFrame = f3Pressed;
+            if (inDebugMode) {
+                imGuiImplGlfw.newFrame();
+                imGuiImplGl3.newFrame();
+                ImGui.newFrame();
+                ImGui.setNextWindowSize(350, 0);
+                ImGui.setNextWindowSizeConstraints(350, 0, 350, Float.MAX_VALUE);
+                if (ImGui.begin("Config")) {
+                    ImGui.text("fps:" + 1/frameTime);
+                    if(ImGui.collapsingHeader("Volumetric Fog")) {
+                        ImGui.sliderFloat("Density", fogDensity, 0, 0.1f);
+                        ImGui.sliderFloat("Albedo", fogAlbedo, 0, 0.35f);
+                        ImGui.sliderFloat("Step Size", stepSize, 0.05f, 3f);
+
+                    }
+                    if(ImGui.collapsingHeader("Tone Mapping")) {
+                        ImGui.sliderFloat("Exposure", exposure, 0.5f, 3f);
+                    }
+                }
+
+                ImGui.end();
+            }
             if (glfwGetKey(window, GLFW_KEY_F11) == GLFW_PRESS && !f11PressedLastFrame) {
                 fullscreen = !fullscreen;
 
@@ -257,17 +307,14 @@ public class DisplayManager {
                             WIDTH, HEIGHT,
                             0); // refreshRate = 0 → don't change it
                 }
+
             }
             f11PressedLastFrame = glfwGetKey(window, GLFW_KEY_F11) == GLFW_PRESS;
 
 
-            double currentTime = glfwGetTime();
 
 
-//            if (currentTime - previousTime >= 1.0) {
-//                glfwSetWindowTitle(window, String.format("FPS: %d", (int) (1 / frameTime)));
-//                previousTime = currentTime;
-//            }
+
 
 
 
@@ -306,8 +353,22 @@ public class DisplayManager {
             renderer.doPostProcessing(fullScreenQuad);
 
 
+            if (inDebugMode) {
+                ImGui.render();
+                imGuiImplGl3.renderDrawData(ImGui.getDrawData());
+                float[] xScale = new float[1];
+                float[] yScale = new float[1];
+                glfwGetWindowContentScale(window, xScale, yScale);
 
+                ImGui.getIO().setFontGlobalScale(xScale[0]);
+                ImGui.updatePlatformWindows();
+                ImGui.renderPlatformWindowsDefault();
+            }
 
+            renderer.setVolumetricAlbedo(fogAlbedo[0]);
+            renderer.setVolumetricFogDensity(fogDensity[0]);
+            renderer.setExposure(exposure[0]);
+            renderer.setVolumetricStepSize(stepSize[0]);
 
             player.move(terrainsArray[(int) (Math.ceil(player.getPosition().x / Terrain.SIZE)) + 1][(int) (Math.ceil(player.getPosition().z / Terrain.SIZE)) + 1]);
             light.updatePosition();
@@ -316,7 +377,9 @@ public class DisplayManager {
             lastTime = GLFW.glfwGetTime();
             // Poll for window events. The key callback above will only be
             // invoked during this call.
+            GLFW.glfwMakeContextCurrent(window);
             glfwPollEvents();
+
 
         }
         loader.cleanUp();
@@ -329,6 +392,11 @@ public class DisplayManager {
     }
 
     public void close() {
+        imGuiImplGl3.shutdown();
+        imGuiImplGlfw.shutdown();
+        GLFW.glfwMakeContextCurrent(NULL);
+        GL.setCapabilities(null);
+        ImGui.destroyContext();
         glfwDestroyWindow(window);
 
         // Terminate GLFW and free the error callback
@@ -351,6 +419,8 @@ public class DisplayManager {
         return height[0];
     }
 
+
+
     public long getWindow() {
         return window;
     }
@@ -367,4 +437,9 @@ public class DisplayManager {
     public Player getPlayer() {
         return this.player;
     }
+    public ImGuiImplGlfw getImGuiImplGlfw() {
+        return this.imGuiImplGlfw;
+    }
+
+
 }
