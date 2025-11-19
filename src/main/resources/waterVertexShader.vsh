@@ -22,10 +22,10 @@ const float tiling = 1500.0;
 void main(void)
 {
 
-    vec4 worldPosition = transformationMatrix * vec4( position, 1.0 );
+    vec4 worldPosition = transformationMatrix * vec4(position, 1.0);
     clipSpace =  projectionMatrix * viewMatrix * worldPosition;
     gl_Position =  clipSpace;
-    pass_textureCoords = vec2(position.x/2.0 + 0.5, position.z / 2.0 + 0.5) * tiling;
+    pass_textureCoords = vec2(position.x / 2.0 + 0.5, position.z / 2.0 + 0.5) * tiling;
     toCameraVector = cameraPosition - worldPosition.xyz;
 
     toLightNormal = lightPosition - worldPosition.xyz;

@@ -40,11 +40,11 @@ void main(void)
     vec3 bitangent  = cross(normal, tangent);
     mat3 TBN = mat3(tangent, bitangent, normal);
     for (int i = 0; i < kernelSize; i++) {
-        vec3 sample = TBN * samples[i];
-        sample = fragPos + sample * radius;
+        vec3 uSample = TBN * samples[i];
+        uSample = fragPos + uSample * radius;
 
         //get sample in screen space
-        vec4 offset = vec4(sample, 1.0);
+        vec4 offset = vec4(uSample, 1.0);
         offset = projectionMatrix * offset; //clip space
         offset.xyz /= offset.w;
         offset.xyz = offset.xyz * 0.5 + 0.5;
@@ -57,7 +57,7 @@ void main(void)
         float rangeCheck = smoothstep(0.0, 1.0, radius / (length(fragPos - occluderPos)));
 
 
-        occlusion += (occluderPos.z >= sample.z + bias ? 1.0 : 0.0) * rangeCheck;
+        occlusion += (occluderPos.z >= uSample.z + bias ? 1.0 : 0.0) * rangeCheck;
 
     }
 

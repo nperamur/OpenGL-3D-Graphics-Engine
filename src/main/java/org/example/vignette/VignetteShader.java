@@ -1,4 +1,4 @@
-package org.example.blur;
+package org.example.vignette;
 
 import org.example.ShaderProgram;
 
@@ -20,7 +20,7 @@ public class VignetteShader extends ShaderProgram {
 
     @Override
     protected void getAllUniformLocations() {
-        locationTexture = getUniformLocation("texture");
+        locationTexture = getUniformLocation("textureSampler");
     }
 
     public void connectTextureUnits() {

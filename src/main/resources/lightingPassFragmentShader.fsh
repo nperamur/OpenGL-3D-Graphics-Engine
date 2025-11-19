@@ -49,7 +49,7 @@ void main(void){
     float distance = length(viewPos.xyz);
     distance = distance - (shadowDistance - transitionDistance);
     distance = distance / transitionDistance;
-    shadowCoords.w = clamp(1 - distance, 0, 1);
+    shadowCoords.w = clamp(1 - distance, 0.0, 1.0);
 
 
     float pcfFactor = 0;

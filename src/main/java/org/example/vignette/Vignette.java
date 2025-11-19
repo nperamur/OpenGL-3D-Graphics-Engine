@@ -1,4 +1,4 @@
-package org.example.blur;
+package org.example.vignette;
 
 import org.example.*;
 import org.lwjgl.opengl.GL11;

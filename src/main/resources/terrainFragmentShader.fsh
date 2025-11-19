@@ -34,14 +34,6 @@ void main(void)
 
     vec3 unitLightNormal = normalize(toLightNormal);
 
-    //vec3 unitVectorToCamera = normalize(toCameraVector);
-    //vec3 lightDirection = -unitLightNormal;
-    //vec3 reflectedLightDirection = reflect(lightDirection, unitNormal);
-    //float specularFactor = dot(unitVectorToCamera, reflectedLightDirection);
-
-    //specularFactor = max(0.0, specularFactor);
-    //float dampedFactor = pow(specularFactor, shineDamper);
-    //vec3 finalSpecular = dampedFactor * lightColor;
 
     float dotProduct = dot(unitNormal, unitLightNormal);
     float brightness = max(dotProduct, 0.4);
