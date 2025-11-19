@@ -1,9 +1,6 @@
 package org.example;
 
-import imgui.ImFontAtlas;
 import imgui.ImGui;
-import imgui.app.Application;
-import imgui.flag.ImGuiWindowFlags;
 import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
 import imgui.internal.ImGuiContext;
@@ -22,7 +19,6 @@ import java.util.ArrayList;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.glfw.GLFW.glfwShowWindow;
-import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 public class DisplayManager {
@@ -140,9 +136,9 @@ public class DisplayManager {
         ModelTexture texture = new ModelTexture(loader.loadTexture("water"));
         TexturedModel waterModel = new TexturedModel(loader.loadToVao(positions, textureCoords, waterIndices, new float[0]), texture);
         FrameBuffers fbos = new FrameBuffers();
-        PostProcessShader postProcessShader = new PostProcessShader();
+        SsaoShader ssaoShader = new SsaoShader();
         Gbuffer gbuffer = new Gbuffer();
-        renderer = new Renderer(shader, terrainShader, waterShader, postProcessShader, terrains, light, waterModel, fbos, loader.loadTexture("dudv"), loader.loadTexture("normals"), gbuffer);
+        renderer = new Renderer(shader, terrainShader, waterShader, ssaoShader, terrains, light, waterModel, fbos, loader.loadTexture("dudv"), loader.loadTexture("normals"), gbuffer);
         float[] vertices = {
                 // Front face
                 -0.5f, -0.5f,  0.5f,  // Bottom-left

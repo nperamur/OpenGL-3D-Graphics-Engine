@@ -3,9 +3,9 @@ package org.example;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-public class PostProcessShader extends ShaderProgram {
-    private static final String VERTEX_PATH = "src/main/resources/postProcessVertexShader.vsh";
-    private static final String FRAGMENT_PATH = "src/main/resources/postProcessFragmentShader.fsh";
+public class SsaoShader extends ShaderProgram {
+    private static final String VERTEX_PATH = "src/main/resources/ssaoVertexShader.vsh";
+    private static final String FRAGMENT_PATH = "src/main/resources/ssaoFragmentShader.fsh";
     private int locationProjectionMatrix;
 
     private int locationNormal;
@@ -16,7 +16,7 @@ public class PostProcessShader extends ShaderProgram {
     private int locationScreenWidth;
     private int locationScreenHeight;
 
-    public PostProcessShader() {
+    public SsaoShader() {
         super(VERTEX_PATH, FRAGMENT_PATH);
     }
 

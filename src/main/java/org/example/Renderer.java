@@ -45,7 +45,7 @@ public class Renderer {
     private float moveFactor = 0;
     private int waterNormalMap;
     private Item heldItem;
-    private PostProcessShader postProcessShader;
+    private SsaoShader ssaoShader;
     private GaussianBlur gaussianBlur;
     private Bloom bloom;
     private CombineTextures combineTextures;
@@ -66,7 +66,7 @@ public class Renderer {
     private float volumetricAlbedo;
     
 
-    public Renderer(TestShader shader, TerrainShader terrainShader, WaterShader waterShader, PostProcessShader postProcessShader, ArrayList<Terrain> terrains, Sunlight light, TexturedModel waterModel, FrameBuffers fbos, int waterDudvTexture, int waterNormalMap, Gbuffer gbuffer) {
+    public Renderer(TestShader shader, TerrainShader terrainShader, WaterShader waterShader, SsaoShader ssaoShader, ArrayList<Terrain> terrains, Sunlight light, TexturedModel waterModel, FrameBuffers fbos, int waterDudvTexture, int waterNormalMap, Gbuffer gbuffer) {
         this.terrainShader = terrainShader;
         this.shader = shader;
         this.terrains = terrains;
@@ -96,7 +96,7 @@ public class Renderer {
         GL11.glDepthFunc(GL_LESS);
         GL11.glEnable(GL30.GL_CLIP_DISTANCE0);
         //GL11.glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        this.postProcessShader = postProcessShader;
+        this.ssaoShader = ssaoShader;
         shader.start();
         createProjectionMatrix();
         shader.connectTextureUnits();
@@ -111,11 +111,11 @@ public class Renderer {
         waterShader.loadProjectionMatrix(projectionMatrix);
         waterShader.stop();
 
-        postProcessShader.start();
-        postProcessShader.connectTextureUnits();
-        postProcessShader.loadSamplingKernels(generateRandomSampleKernels());
-        postProcessShader.loadProjectionMatrix(projectionMatrix);
-        postProcessShader.stop();
+        ssaoShader.start();
+        ssaoShader.connectTextureUnits();
+        ssaoShader.loadSamplingKernels(generateRandomSampleKernels());
+        ssaoShader.loadProjectionMatrix(projectionMatrix);
+        ssaoShader.stop();
 
         lightingPassShader.start();
         lightingPassShader.connectTextureUnits();
@@ -327,9 +327,9 @@ public class Renderer {
 
         gaussianBlur.bindFrameBuffer();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        postProcessShader.start();
-        postProcessShader.loadProjectionMatrix(projectionMatrix);
-        postProcessShader.loadScreenDimensions(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight());
+        ssaoShader.start();
+        ssaoShader.loadProjectionMatrix(projectionMatrix);
+        ssaoShader.loadScreenDimensions(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight());
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, noiseTexture);
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
@@ -337,7 +337,7 @@ public class Renderer {
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, gbuffer.getPositionTexture());
         renderModel(fullScreenQuad);
-        postProcessShader.stop();
+        ssaoShader.stop();
 
         VerticalBlur vBlur = gaussianBlur.getVBlur();
         HorizontalBlur hBlur = gaussianBlur.getHBlur();
@@ -439,7 +439,7 @@ public class Renderer {
         gaussianBlur.cleanUp();
         combineTextures.cleanUp();
         bloom.cleanUp();
-        postProcessShader.cleanUp();
+        ssaoShader.cleanUp();
         shader.cleanUp();
         terrainShader.cleanUp();
         waterShader.cleanUp();
