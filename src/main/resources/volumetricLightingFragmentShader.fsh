@@ -54,7 +54,7 @@ void main(void) {
     float offset = rand(floor(pixelCoords)) * stepSize;
 
     float falloff = exp(-density * stepSize);
-    float phi = phaseFunction(normalize(lightPosition), rayDir, anisotropy);
+    float phi = phaseFunction(normalize(lightPositio), rayDir, anisotropy);
 
     float transmittance = 1;
     vec3 accumulation = vec3(0.0);
