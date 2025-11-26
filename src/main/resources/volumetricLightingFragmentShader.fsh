@@ -17,7 +17,7 @@ layout(location = 0) out vec4 out_color;
 
 
 const float totalDistance = 145;
-const float lightStrength = 1;
+const float lightStrength = 500;
 
 in vec2 pass_textureCoords;
 
@@ -69,10 +69,10 @@ void main(void) {
         float diff = shadowCoords.z - 0.001 - shadowDepth;
         float visible = smoothstep(-0.02, 0.02, -diff);
 
-        float lightAmount = lightStrength * visible * phi;
 
+        vec3 lightAmount = lightColor * lightStrength * visible * phi;
+        accumulation += albedo * density * stepSize * lightAmount * transmittance;
         transmittance *= falloff;
-        accumulation += albedo * stepSize * lightAmount * transmittance * lightColor;
     }
 
 
