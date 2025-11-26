@@ -4,6 +4,7 @@ import imgui.ImGui;
 import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
 import imgui.internal.ImGuiContext;
+import org.example.fbo.Gbuffer;
 import org.example.terrain.Terrain;
 import org.example.terrain.TerrainShader;
 import org.example.terrain.TerrainTexturePack;
@@ -62,7 +63,7 @@ public class DisplayManager {
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Game", NULL, NULL);
+        window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGL Graphics Engine", NULL, NULL);
 
         // Make the OpenGL context current
         glfwMakeContextCurrent(window);
@@ -138,6 +139,7 @@ public class DisplayManager {
         FrameBuffers fbos = new FrameBuffers();
         SsaoShader ssaoShader = new SsaoShader();
         Gbuffer gbuffer = new Gbuffer();
+        gbuffer.addLowResFrameBuffer(2);
         renderer = new Renderer(shader, terrainShader, waterShader, ssaoShader, terrains, light, waterModel, fbos, loader.loadTexture("dudv"), loader.loadTexture("normals"), gbuffer);
         float[] vertices = {
                 // Front face
@@ -241,10 +243,10 @@ public class DisplayManager {
 
         double previousTime = glfwGetTime();
         float[] fogDensity = new float[1];
-        fogDensity[0] = 0.003f;
+        fogDensity[0] = 0.01f;
 
         float[] fogAlbedo = new float[1];
-        fogAlbedo[0] = 0.049f;
+        fogAlbedo[0] = 0.015f;
 
         float[] exposure = new float[1];
         exposure[0] = 1.8f;
@@ -269,8 +271,8 @@ public class DisplayManager {
                 if (ImGui.begin("Config")) {
                     ImGui.text("fps:" + 1/frameTime);
                     if(ImGui.collapsingHeader("Volumetric Fog")) {
-                        ImGui.sliderFloat("Density", fogDensity, 0, 0.1f);
-                        ImGui.sliderFloat("Albedo", fogAlbedo, 0, 0.35f);
+                        ImGui.sliderFloat("Density", fogDensity, 0f, 0.02f, "%.6f");
+                        ImGui.sliderFloat("Albedo", fogAlbedo, 0, 0.2f, "%.6f");
                         ImGui.sliderFloat("Step Size", stepSize, 0.05f, 3f);
 
                     }
@@ -345,7 +347,6 @@ public class DisplayManager {
             gbuffer.unbindCurrentFrameBuffer();
 
             //postProcessing
-
             renderer.doPostProcessing(fullScreenQuad);
 
 
@@ -375,7 +376,6 @@ public class DisplayManager {
             // invoked during this call.
             GLFW.glfwMakeContextCurrent(window);
             glfwPollEvents();
-
 
         }
         loader.cleanUp();
