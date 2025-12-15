@@ -1,10 +1,9 @@
-package org.example.blur;
+package org.example.blur.gaussianblur;
 
 import org.example.*;
+import org.example.fbo.Fbo;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30;
 
 import static org.lwjgl.opengl.GL11C.*;
 
@@ -18,6 +17,7 @@ public class HorizontalBlur extends PostProcessEffect {
         shader.start();
         shader.connectTextureUnits();
         shader.loadTargetWidth(targetFboWidth);
+        shader.loadNumSamples(11);
         shader.stop();
     }
 
@@ -29,7 +29,7 @@ public class HorizontalBlur extends PostProcessEffect {
         }
 
         shader.start();
-        GL13.glActiveTexture(GL13.GL_TEXTURE10);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, super.getFbo().getTexture());
 
         Renderer.renderModel(fullScreenQuad);

@@ -1,4 +1,4 @@
-
+#version 400 core
 
 uniform sampler2D shadowMap;
 uniform sampler2D gPosition;

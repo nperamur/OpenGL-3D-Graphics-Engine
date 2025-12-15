@@ -1,9 +1,9 @@
 package org.example.bloom;
 
 import org.example.Model;
-import org.example.blur.GaussianBlur;
-import org.example.blur.HorizontalBlur;
-import org.example.blur.VerticalBlur;
+import org.example.blur.gaussianblur.GaussianBlur;
+import org.example.blur.gaussianblur.HorizontalBlur;
+import org.example.blur.gaussianblur.VerticalBlur;
 
 public class Bloom {
     private BrightFilter brightFilter;

@@ -1,3 +1,4 @@
+#version 400 core
 uniform sampler2D textureSampler;
 in vec2 pass_textureCoords;
 

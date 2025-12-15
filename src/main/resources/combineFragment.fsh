@@ -1,3 +1,4 @@
+#version 400 core
 uniform sampler2D textureOne;
 uniform sampler2D textureTwo;
 uniform float threshold;

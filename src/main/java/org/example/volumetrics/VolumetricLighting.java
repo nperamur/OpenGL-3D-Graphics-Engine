@@ -1,6 +1,8 @@
 package org.example.volumetrics;
 
 import org.example.*;
+import org.example.fbo.Fbo;
+import org.example.fbo.Gbuffer;
 import org.example.shadow.ShadowRenderer;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;

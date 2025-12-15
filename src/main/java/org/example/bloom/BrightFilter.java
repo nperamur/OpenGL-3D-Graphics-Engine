@@ -1,6 +1,7 @@
 package org.example.bloom;
 
 import org.example.*;
+import org.example.fbo.Fbo;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
@@ -17,6 +18,7 @@ public class BrightFilter extends PostProcessEffect {
         shader.start();
         shader.connectTextureUnits();
         shader.stop();
+        this.getFbo().addLowResFrameBuffer(6);
     }
 
     @Override
@@ -28,7 +30,7 @@ public class BrightFilter extends PostProcessEffect {
         this.shader.start();
         this.shader.loadThreshold(threshold);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, super.getFbo().getLowResTexture());
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, super.getFbo().getLowResTexture(0));
         Renderer.renderModel(screenQuad);
         this.shader.stop();
     }

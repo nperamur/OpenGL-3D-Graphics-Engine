@@ -4,8 +4,7 @@ package org.example.shadow;
 import java.nio.ByteBuffer;
 
 
-import org.example.Fbo;
-import org.example.Main;
+import org.example.fbo.Fbo;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL14;
@@ -20,7 +19,7 @@ public class ShadowFrameBuffer extends Fbo {
 
 
     @Override
-    protected int createTextureAttachment() {
+    protected int createTextureAttachment(int width, int height) {
         return -1;
     }
 

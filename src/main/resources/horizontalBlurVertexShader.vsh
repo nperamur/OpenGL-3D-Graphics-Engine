@@ -1,7 +1,9 @@
+#version 400 core
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 textureCoords;
 layout(location = 2) in vec3 normal;
 uniform float targetWidth;
+uniform int numSamples;
 
 out vec2 blurTextureCoords[11];
 out vec2 pass_textureCoords;
@@ -12,8 +14,8 @@ void main(void) {
     float pixelSize = 1.0 / targetWidth;
     pass_textureCoords = textureCoords;
 
-    for (int i = -5; i <= 5; i++) {
-        blurTextureCoords[i + 5] = centerTexCoords + vec2(i * pixelSize, 0);
+    for (int i = -numSamples / 2; i <= numSamples / 2; i++) {
+        blurTextureCoords[i + numSamples / 2] = centerTexCoords + vec2(i * pixelSize, 0);
     }
 
 }

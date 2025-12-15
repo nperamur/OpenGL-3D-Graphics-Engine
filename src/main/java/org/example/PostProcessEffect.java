@@ -1,5 +1,7 @@
 package org.example;
 
+import org.example.fbo.Fbo;
+
 public abstract class PostProcessEffect {
     private Fbo fbo;
 

@@ -1,8 +1,7 @@
-package org.example.blur;
+package org.example.blur.gaussianblur;
 
 import org.example.Main;
 import org.example.Model;
-import org.example.PostProcessEffect;
 
 public class GaussianBlur {
     private HorizontalBlur hBlur;

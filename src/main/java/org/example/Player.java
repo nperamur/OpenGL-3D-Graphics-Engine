@@ -20,10 +20,15 @@ public class Player {
     private float currentHeightOfTerrain;
     private boolean crouching;
     private static final float GRAVITY = 1f;
-    private float movementSpeed = 0.1f;
+    private float movementSpeed = 0.2f;
     private boolean sprinting;
     private double fallStartTime;
     private Item heldItem;
+
+    private static final float MASS = 1;
+    private static final float WATER_DENSITY = 0.5f;
+
+
 
 
     public Player(double pitch, double yaw, double roll, long window) {
@@ -46,7 +51,7 @@ public class Player {
     }
 
     public void move(Terrain terrain) {
-        float heightOfTerrain = terrain.getHeightOfTerrain(this.position.x, this.position.z);
+        float heightOfTerrain = terrain.getHeightOfTerrainNotInterpolated(this.position.x, this.position.z);
         currentHeightOfTerrain = heightOfTerrain;
         if (isJumping || position.y <= heightOfTerrain) {
             fallStartTime = -1;
@@ -55,6 +60,13 @@ public class Player {
             isJumping = false;
             position.y = heightOfTerrain;
         }
+
+        if (position.y < Renderer.WATER_Y) {
+            float forceBuoyancy = WATER_DENSITY * MASS;
+            float acceleration = (forceBuoyancy - MASS * GRAVITY) / MASS;
+
+        }
+
         if (isJumping) {
             double t = System.nanoTime() - jumpStartTime;
             t /= 200000000;

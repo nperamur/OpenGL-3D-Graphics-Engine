@@ -2,7 +2,12 @@ package org.example;
 
 import org.example.bloom.Bloom;
 import org.example.bloom.CombineTextures;
-import org.example.blur.*;
+import org.example.blur.bilateralblur.BilateralBlur;
+import org.example.blur.bilateralblur.BilateralHorizontalBlur;
+import org.example.blur.bilateralblur.BilateralVerticalBlur;
+import org.example.blur.gaussianblur.GaussianBlur;
+import org.example.fbo.Fbo;
+import org.example.fbo.Gbuffer;
 import org.example.shadow.*;
 import org.example.terrain.Terrain;
 import org.example.terrain.TerrainShader;
@@ -57,6 +62,8 @@ public class Renderer {
     private ToneMapping toneMapping;
     private Vignette vignette;
     private float volumetricStepSize;
+    private BilateralBlur bilateralBlur;
+    private BilateralBlur ssaoBlur;
 
     private Fbo lightFbo;
     private final ArrayList<Entity> shadowedEntities = new ArrayList<>();
@@ -64,6 +71,9 @@ public class Renderer {
 
     private float volumetricFogDensity;
     private float volumetricAlbedo;
+    private CombineTextures combineTexturesAdd;
+
+    private static final int SSAO_KERNEL_SIZE = 16;
     
 
     public Renderer(TestShader shader, TerrainShader terrainShader, WaterShader waterShader, SsaoShader ssaoShader, ArrayList<Terrain> terrains, Sunlight light, TexturedModel waterModel, FrameBuffers fbos, int waterDudvTexture, int waterNormalMap, Gbuffer gbuffer) {
@@ -78,11 +88,14 @@ public class Renderer {
         this.lightFbo = new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE);
         this.waterDudvTexture = waterDudvTexture;
         this.combineTextures = new CombineTextures(false);
+        this.combineTexturesAdd = new CombineTextures(true);
         this.waterNormalMap = waterNormalMap;
-        this.gaussianBlur = new GaussianBlur(3);
+        this.gaussianBlur = new GaussianBlur(5);
         this.bloom = new Bloom();
         this.lightingPassShader = new LightingPassShader();
         this.volumetricStepSize = 1.45f;
+        this.bilateralBlur = new BilateralBlur(gbuffer, 1);
+        this.ssaoBlur = new BilateralBlur(gbuffer, 1);
 
 
         this.vignette = new Vignette();
@@ -124,7 +137,7 @@ public class Renderer {
 
 
 
-        GLFW.glfwSetWindowSizeCallback(Main.getDisplayManager().getWindow(), (long window, int width, int height) -> {
+        GLFW.glfwSetFramebufferSizeCallback(Main.getDisplayManager().getWindow(), (long window, int width, int height) -> {
             glViewport(0, 0, width, height);
             createProjectionMatrix();
             fbos.initialiseSceneFrameBuffer();
@@ -163,8 +176,8 @@ public class Renderer {
         shader.loadViewMatrix(player);
         shader.loadClipPlane(clipPlane);
         shader.loadProjectionMatrix(projectionMatrix);
-//        heldItem.updatePosition();
         if (heldItem != null) {
+            heldItem.updatePosition();
             heldItem.render(shader);
         }
         shader.loadClipPlane(new Vector4f(0, 10000, 0f, 0));
@@ -325,7 +338,7 @@ public class Renderer {
 
 
 
-        gaussianBlur.bindFrameBuffer();
+        ssaoBlur.bindFrameBuffer();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         ssaoShader.start();
         ssaoShader.loadProjectionMatrix(projectionMatrix);
@@ -338,9 +351,10 @@ public class Renderer {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, gbuffer.getPositionTexture());
         renderModel(fullScreenQuad);
         ssaoShader.stop();
+        ssaoBlur.unbindFrameBuffer();
 
-        VerticalBlur vBlur = gaussianBlur.getVBlur();
-        HorizontalBlur hBlur = gaussianBlur.getHBlur();
+        BilateralVerticalBlur vBlur = ssaoBlur.getVBlur();
+        BilateralHorizontalBlur hBlur = ssaoBlur.getHBlur();
         vBlur.bindFrameBuffer();
         hBlur.render(fullScreenQuad);
         vBlur.unbindFrameBuffer();
@@ -359,23 +373,21 @@ public class Renderer {
         volumetricLighting.bindFrameBuffer();
         bloom.render(fullScreenQuad);
         volumetricLighting.unbindFrameBuffer();
-
-
-        vignette.bindFrameBuffer();
         if (Main.getDisplayManager().getPlayer().getPosition().y <= -1) {
             volumetricLighting.setVolumetricParams(new Vector3f(0.3f, 0.5f, 1.0f).mul(2).mul(light.getColor()), volumetricStepSize, 0f, volumetricFogDensity,  volumetricAlbedo);
         } else {
             volumetricLighting.setVolumetricParams(light.getColor(), volumetricStepSize, light.getFogAnisotropy(), volumetricFogDensity,  volumetricAlbedo);
         }
+        vignette.bindFrameBuffer();
         volumetricLighting.render(fullScreenQuad);
-
         vignette.unbindFrameBuffer();
-
         toneMapping.bindFrameBuffer();
         vignette.render(fullScreenQuad);
         toneMapping.unbindFrameBuffer();
-
         toneMapping.render(fullScreenQuad);
+
+
+
 
 
 
@@ -395,10 +407,10 @@ public class Renderer {
     }
 
     private static Vector3f[] generateRandomSampleKernels() {
-        Vector3f[] vectors = new Vector3f[16];
-        for (int i = 0; i < 16; i++) {
+        Vector3f[] vectors = new Vector3f[SSAO_KERNEL_SIZE];
+        for (int i = 0; i < SSAO_KERNEL_SIZE; i++) {
             Vector3f vector = new Vector3f((float) (Math.random() * 2 - 1), (float) (Math.random() * 2 - 1), (float) Math.random()).normalize();
-            float scale = (float) i / 16;
+            float scale = (float) i / SSAO_KERNEL_SIZE;
             vector.mul(org.joml.Math.lerp(0.1f, 1.0f, scale * scale));
             vectors[i] = vector;
         }
@@ -409,7 +421,7 @@ public class Renderer {
         Random random = new Random();
 
         FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(48);
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < SSAO_KERNEL_SIZE; i++) {
             float x = random.nextFloat() * 2.0f - 1.0f;
             float y = random.nextFloat() * 2.0f - 1.0f;
             float z = 0.0f;
@@ -450,6 +462,8 @@ public class Renderer {
         lightFbo.cleanUp();
         volumetricLighting.cleanUp();
         vignette.cleanUp();
+        bilateralBlur.cleanUp();
+        ssaoBlur.cleanUp();
         glDeleteTextures(noiseTexture);
     }
 

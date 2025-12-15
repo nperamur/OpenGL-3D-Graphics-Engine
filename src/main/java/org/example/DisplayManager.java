@@ -196,6 +196,7 @@ public class DisplayManager {
                 renderer.addEntity(new Entity(model, new Vector3f(worldX, height - 5, worldZ), 0,0, 0, 1f));
             }
         }
+//        renderer.setHeldItem(entity);
         renderer.addEntity(entity2);
         renderer.addEntity(new Entity(new TexturedModel(loader.loadToVao(vertices, textureCoords, indices, new float[0]), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(0, 50, 0), 0, 30, 0, 50));
 
@@ -308,9 +309,6 @@ public class DisplayManager {
 
             }
             f11PressedLastFrame = glfwGetKey(window, GLFW_KEY_F11) == GLFW_PRESS;
-
-
-
 
 
 

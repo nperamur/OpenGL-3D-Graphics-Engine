@@ -1,6 +1,7 @@
 package org.example.bloom;
 
 import org.example.*;
+import org.example.fbo.Fbo;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 

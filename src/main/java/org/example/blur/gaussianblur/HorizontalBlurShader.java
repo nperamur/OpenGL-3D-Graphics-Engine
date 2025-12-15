@@ -1,4 +1,4 @@
-package org.example.blur;
+package org.example.blur.gaussianblur;
 
 import org.example.ShaderProgram;
 
@@ -7,6 +7,7 @@ public class HorizontalBlurShader extends ShaderProgram {
     private static final String HORIZONTAL_BLUR_FRAGMENT = "src/main/resources/blurFragment.fsh";
     private int locationTargetWidth;
     private int locationTexture;
+    private int locationNumSamples;
 
 
     public HorizontalBlurShader() {
@@ -24,6 +25,7 @@ public class HorizontalBlurShader extends ShaderProgram {
     protected void getAllUniformLocations() {
         this.locationTargetWidth = super.getUniformLocation("targetWidth");
         this.locationTexture = super.getUniformLocation("originalTexture");
+        this.locationNumSamples = super.getUniformLocation("numSamples");
     }
 
     public void loadTargetWidth(float width) {
@@ -31,7 +33,11 @@ public class HorizontalBlurShader extends ShaderProgram {
     }
 
     public void connectTextureUnits() {
-        super.loadInt(locationTexture, 10);
+        super.loadInt(locationTexture, 0);
 
+    }
+
+    public void loadNumSamples(int numSamples) {
+        super.loadInt(locationNumSamples, numSamples);
     }
 }

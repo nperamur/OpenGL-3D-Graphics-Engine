@@ -67,7 +67,7 @@ public class Sunlight extends Light {
 
 
 
-        float nightFogAnisotropy = 0.1f;
+        float nightFogAnisotropy = 0f;
         float dayFogAnisotropy = 0.45f;
         float sunsetFogAnisotropy = 0.15f;
 

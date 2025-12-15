@@ -1,3 +1,4 @@
+#version 400 core
 layout(location = 0) out vec4 out_Color;
 
 
@@ -14,7 +15,7 @@ uniform int screenWidth;
 uniform int screenHeight;
 
 int kernelSize = 16;
-float radius = 0.4;
+float radius = 0.5;
 float bias = 0.03;
 
 
@@ -30,7 +31,8 @@ void main(void)
 
     vec3 fragPos = texture(gPosition, pass_textureCoords).xyz;
     float maxDistance = 500.0;
-    if (length(fragPos) > maxDistance) {
+    float dist = length(fragPos);
+    if (dist > maxDistance) {
         out_Color = vec4(1.0);
         return;
     }
@@ -61,12 +63,11 @@ void main(void)
 
     }
 
-    //occlusion *= 1 - smoothstep(0.1, 100, fragPos.z);
 
-    //out_Color = vec4(texture(textureSampler, pass_textureCoords).rgb * (1 - occlusion/(count * 1.3)), 1) * 1.2;
-    //out_Color = vec4(1.0 - out_Color.rgb, out_Color.a);
-    //out_Color = vec4(vec3(1, 1, 1) * (1 - occlusion/(count * 1.3)), 1) * 1.2;
     occlusion = 1 - occlusion/(kernelSize);
     occlusion = pow(occlusion, 2);
-    out_Color = vec4(vec3(1, 1, 1) * occlusion * 1.1, 1);
+    float distanceFade = smoothstep(0, maxDistance, dist);
+
+    float finalOcclusion = mix(occlusion, 1.0, distanceFade);
+    out_Color = vec4(vec3(1, 1, 1) * finalOcclusion * 1.1, 1);
 }
