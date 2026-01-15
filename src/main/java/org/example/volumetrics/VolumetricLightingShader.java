@@ -17,6 +17,10 @@ public class VolumetricLightingShader extends ShaderProgram {
 
     private int locationInversePlayerViewMatrix;
 
+    private int locationInverseProjectionMatrix;
+
+    private int locationMoveFactor;
+
     private int locationToLightSpace;
     private int locationLightProjectionMatrix;
 
@@ -30,6 +34,10 @@ public class VolumetricLightingShader extends ShaderProgram {
     private int locationAnisotropy;
     private int locationAlbedo;
     private int locationStepSize;
+
+    private int locationCloudNoise;
+
+    private int locationRandomNumber;
 
     public VolumetricLightingShader() {
         super(VERTEX_FILE, FRAGMENT_FILE);
@@ -64,6 +72,11 @@ public class VolumetricLightingShader extends ShaderProgram {
         this.locationAnisotropy = super.getUniformLocation("anisotropy");
         this.locationAlbedo = super.getUniformLocation("albedo");
         this.locationStepSize = super.getUniformLocation("stepSize");
+        this.locationInverseProjectionMatrix = super.getUniformLocation("inverseProjectionMatrix");
+        this.locationCloudNoise = super.getUniformLocation("cloudNoiseTexture");
+        this.locationMoveFactor = super.getUniformLocation("moveFactor");
+
+        this.locationRandomNumber = super.getUniformLocation("randomNumber");
 
     }
 
@@ -72,12 +85,16 @@ public class VolumetricLightingShader extends ShaderProgram {
         super.loadInt(locationPosition, 1);
         super.loadInt(locationShadowMap, 2);
         super.loadInt(locationNormals, 3);
-
+        super.loadInt(locationCloudNoise, 4);
     }
 
 
     public void loadInversePlayerViewMatrix(Matrix4f viewMatrix) {
         super.loadMatrix(locationInversePlayerViewMatrix, viewMatrix);
+    }
+
+    public void loadMoveFactor(float moveFactor) {
+        super.loadFloat(locationMoveFactor, moveFactor);
     }
 
     public void loadViewMatrix(Matrix4f viewMatrix) {
@@ -123,6 +140,16 @@ public class VolumetricLightingShader extends ShaderProgram {
 
     public void loadStepSize(float stepSize) {
         super.loadFloat(locationStepSize, stepSize);
+    }
+
+
+    public void loadInverseProjectionMatrix(Matrix4f inverseProjMatrix) {
+        super.loadMatrix(locationInverseProjectionMatrix, inverseProjMatrix);
+    }
+
+
+    public void loadRandomNumber(int frameCount) {
+        super.loadInt(locationRandomNumber, frameCount);
     }
 
 

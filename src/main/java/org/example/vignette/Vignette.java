@@ -13,7 +13,7 @@ public class Vignette extends PostProcessEffect {
     public Vignette() {
         super(new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
         this.shader = new VignetteShader();
-        shader.connectTextureUnits();
+        shader.init();
     }
 
     @Override

@@ -16,8 +16,11 @@ public class SsaoShader extends ShaderProgram {
     private int locationScreenWidth;
     private int locationScreenHeight;
 
-    public SsaoShader() {
+    private Vector3f[] randomSamplingKernels;
+
+    public SsaoShader(Vector3f[] randomSamplingKernels) {
         super(VERTEX_PATH, FRAGMENT_PATH);
+        this.randomSamplingKernels = randomSamplingKernels;
     }
 
     @Override
@@ -47,8 +50,8 @@ public class SsaoShader extends ShaderProgram {
 
     }
 
-    public void loadSamplingKernels(Vector3f[] vectors) {
-        super.loadVectorArray(locationSamples, vectors);
+    private void loadSamplingKernels() {
+        super.loadVectorArray(locationSamples, this.randomSamplingKernels);
     }
 
     public void loadProjectionMatrix(Matrix4f projection) {
@@ -60,4 +63,11 @@ public class SsaoShader extends ShaderProgram {
         super.loadInt(locationScreenHeight, height);
     }
 
+    @Override
+    public void init() {
+        this.start();
+        this.connectTextureUnits();
+        this.loadSamplingKernels();
+        this.stop();
+    }
 }

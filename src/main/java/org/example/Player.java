@@ -143,6 +143,10 @@ public class Player {
             jump();
         }
 
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_J) == GLFW.GLFW_PRESS) {
+            ShaderProgram.reloadAllShaders();
+        }
+
         crouching = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
         sprinting = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
         if (crouching) {

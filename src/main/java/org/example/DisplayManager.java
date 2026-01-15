@@ -8,6 +8,7 @@ import org.example.fbo.Gbuffer;
 import org.example.terrain.Terrain;
 import org.example.terrain.TerrainShader;
 import org.example.terrain.TerrainTexturePack;
+import org.example.water.FrameBuffers;
 import org.example.water.WaterShader;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -137,7 +138,7 @@ public class DisplayManager {
         ModelTexture texture = new ModelTexture(loader.loadTexture("water"));
         TexturedModel waterModel = new TexturedModel(loader.loadToVao(positions, textureCoords, waterIndices, new float[0]), texture);
         FrameBuffers fbos = new FrameBuffers();
-        SsaoShader ssaoShader = new SsaoShader();
+        SsaoShader ssaoShader = new SsaoShader(Renderer.generateRandomSampleKernels());
         Gbuffer gbuffer = new Gbuffer();
         gbuffer.addLowResFrameBuffer(2);
         renderer = new Renderer(shader, terrainShader, waterShader, ssaoShader, terrains, light, waterModel, fbos, loader.loadTexture("dudv"), loader.loadTexture("normals"), gbuffer);
@@ -244,10 +245,10 @@ public class DisplayManager {
 
         double previousTime = glfwGetTime();
         float[] fogDensity = new float[1];
-        fogDensity[0] = 0.01f;
+        fogDensity[0] = 0.0020f;
 
         float[] fogAlbedo = new float[1];
-        fogAlbedo[0] = 0.015f;
+        fogAlbedo[0] = 0.05f;
 
         float[] exposure = new float[1];
         exposure[0] = 1.8f;
@@ -272,8 +273,8 @@ public class DisplayManager {
                 if (ImGui.begin("Config")) {
                     ImGui.text("fps:" + 1/frameTime);
                     if(ImGui.collapsingHeader("Volumetric Fog")) {
-                        ImGui.sliderFloat("Density", fogDensity, 0f, 0.02f, "%.6f");
-                        ImGui.sliderFloat("Albedo", fogAlbedo, 0, 0.2f, "%.6f");
+                        ImGui.sliderFloat("Density", fogDensity, 0f, 0.005f, "%.6f");
+                        ImGui.sliderFloat("Albedo", fogAlbedo, 0, 0.5f, "%.6f");
                         ImGui.sliderFloat("Step Size", stepSize, 0.05f, 3f);
 
                     }
@@ -317,10 +318,38 @@ public class DisplayManager {
             if (getHeight() != gbuffer.getHeight() && getWidth() != gbuffer.getWidth()) {
                 gbuffer.resize(getWidth(), getHeight());
             }
-            float skyBrightness = (float) Math.sin(light.getAngle());
             sunEntity.setPosition(light.getPosition());
-            renderer.init(0.53f * skyBrightness, 0.81f * skyBrightness, 0.92f * skyBrightness, 0);
-            //renderer.render(entity2, shader, camera);
+
+            float sunHeight = (float)Math.sin(light.getAngle());
+
+            Vector3f nightColor = new Vector3f(0.02f, 0.03f, 0.05f);
+            Vector3f horizonDayColor = new Vector3f(0.8f, 0.85f, 0.95f);
+            Vector3f zenithDayColor = new Vector3f(0.35f, 0.55f, 0.75f);
+
+            Vector3f sunsetColor = new Vector3f(1.0f, 0.72f, 0.55f);
+
+            float t = Math.max(0, sunHeight);
+
+            Vector3f skyDay = horizonDayColor.mul(1 - t).add(zenithDayColor.mul(t));
+
+            float sunsetStart = 0.25f;
+            float sunsetFactor = 0f;
+            if (t < sunsetStart) {
+                sunsetFactor = (sunsetStart - t) / sunsetStart;
+                sunsetFactor = (float)Math.pow(sunsetFactor, 1.2f);
+            }
+            skyDay = skyDay.mul(1 - sunsetFactor).add(sunsetColor.mul(sunsetFactor));
+
+            Vector3f skyColor = nightColor.mul(1 - t).add(skyDay.mul(t));
+
+            skyColor.x = Math.min(skyColor.x, 1.0f);
+            skyColor.y = Math.min(skyColor.y, 1.0f);
+            skyColor.z = Math.min(skyColor.z, 1.0f);
+
+            renderer.init(skyColor.x, skyColor.y, skyColor.z, 0);
+
+
+
 
             //reflection
 

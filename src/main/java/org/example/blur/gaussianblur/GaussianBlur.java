@@ -8,8 +8,8 @@ public class GaussianBlur {
     private VerticalBlur vBlur;
     
     public GaussianBlur(int strength) {
-        hBlur = new HorizontalBlur(Main.getDisplayManager().getWidth()/strength, Main.getDisplayManager().getHeight()/strength);
-        vBlur = new VerticalBlur(Main.getDisplayManager().getWidth()/strength, Main.getDisplayManager().getHeight()/strength);
+        hBlur = new HorizontalBlur(strength);
+        vBlur = new VerticalBlur(strength);
     }
 
 

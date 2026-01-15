@@ -1,8 +1,9 @@
-package org.example;
+package org.example.water;
 
 import java.nio.ByteBuffer;
 
 
+import org.example.Main;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
@@ -27,9 +28,6 @@ public class FrameBuffers {
     private int refractionTexture;
     private int refractionDepthTexture;
     
-    private int sceneFrameBuffer;
-    private int sceneTexture;
-    private int sceneDepthTexture;
 
 
 
@@ -37,7 +35,6 @@ public class FrameBuffers {
     public FrameBuffers() {//call when loading the game
         initialiseReflectionFrameBuffer();
         initialiseRefractionFrameBuffer();
-        initialiseSceneFrameBuffer();
     }
 
 
@@ -48,9 +45,6 @@ public class FrameBuffers {
         GL30.glDeleteFramebuffers(refractionFrameBuffer);
         GL11.glDeleteTextures(refractionTexture);
         GL11.glDeleteTextures(refractionDepthTexture);
-        GL30.glDeleteFramebuffers(sceneFrameBuffer);
-        GL11.glDeleteTextures(sceneTexture);
-        GL11.glDeleteTextures(sceneDepthTexture);
 
     }
 
@@ -63,11 +57,6 @@ public class FrameBuffers {
         bindFrameBuffer(refractionFrameBuffer,REFRACTION_WIDTH,REFRACTION_HEIGHT);
     }
     
-    public void bindSceneFrameBuffer() {
-        bindFrameBuffer(this.sceneFrameBuffer, Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight());
-
-
-    }
 
     public void unbindCurrentFrameBuffer() {//call to switch to default frame buffer
         GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
@@ -87,9 +76,7 @@ public class FrameBuffers {
         return refractionDepthTexture;
     }
 
-    public int getSceneTexture() {
-        return this.sceneTexture;
-    }
+
 
 
     private void initialiseReflectionFrameBuffer() {
@@ -106,18 +93,8 @@ public class FrameBuffers {
         unbindCurrentFrameBuffer();
     }
 
-    public void initialiseSceneFrameBuffer() {
-        sceneFrameBuffer = createFrameBuffer();
-        sceneTexture = createTextureAttachment(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight());
-        this.sceneDepthTexture = createDepthTextureAttachment(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight());
 
-        unbindCurrentFrameBuffer();
 
-    }
-
-    public int getSceneDepthTexture() {
-        return this.sceneDepthTexture;
-    }
     
     
 

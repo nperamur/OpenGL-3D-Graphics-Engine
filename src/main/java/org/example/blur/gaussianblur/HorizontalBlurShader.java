@@ -9,9 +9,13 @@ public class HorizontalBlurShader extends ShaderProgram {
     private int locationTexture;
     private int locationNumSamples;
 
+    private int targetFboWidth;
+    private int numSamples;
 
-    public HorizontalBlurShader() {
+    public HorizontalBlurShader(int targetFboWidth, int numSamples) {
         super(HORIZONTAL_BLUR_VERTEX, HORIZONTAL_BLUR_FRAGMENT);
+        this.targetFboWidth = targetFboWidth;
+        this.numSamples = numSamples;
     }
 
     @Override
@@ -37,7 +41,16 @@ public class HorizontalBlurShader extends ShaderProgram {
 
     }
 
-    public void loadNumSamples(int numSamples) {
+    @Override
+    public void init() {
+        this.start();
+        this.connectTextureUnits();
+        this.loadTargetWidth(targetFboWidth);
+        this.loadNumSamples(numSamples);
+        this.stop();
+    }
+
+    private void loadNumSamples(int numSamples) {
         super.loadInt(locationNumSamples, numSamples);
     }
 }

@@ -5,15 +5,19 @@ import org.example.bloom.CombineTextures;
 import org.example.blur.bilateralblur.BilateralBlur;
 import org.example.blur.bilateralblur.BilateralHorizontalBlur;
 import org.example.blur.bilateralblur.BilateralVerticalBlur;
-import org.example.blur.gaussianblur.GaussianBlur;
 import org.example.fbo.Fbo;
 import org.example.fbo.Gbuffer;
+import org.example.noise.CloudNoiseGenerator;
 import org.example.shadow.*;
 import org.example.terrain.Terrain;
 import org.example.terrain.TerrainShader;
 import org.example.tonemapping.ToneMapping;
 import org.example.vignette.Vignette;
+import org.example.volumetrics.TemporalAccumulation;
+import org.example.volumetrics.VolumetricBlend;
+import org.example.volumetrics.VolumetricFrameBuffer;
 import org.example.volumetrics.VolumetricLighting;
+import org.example.water.FrameBuffers;
 import org.example.water.WaterShader;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -43,19 +47,22 @@ public class Renderer {
     private TerrainShader terrainShader;
     private WaterShader waterShader;
     private Sunlight light;
+
+    private float cloudMoveFactor;
     private TexturedModel waterModel;
     private FrameBuffers fbos;
     private int waterDudvTexture;
     private static final float WAVE_SPEED = 0.02f;
-    private float moveFactor = 0;
+    private static final float CLOUD_SPEED = 0.02f;
+    private float moveFactor = 2;
     private int waterNormalMap;
     private Item heldItem;
     private SsaoShader ssaoShader;
-    private GaussianBlur gaussianBlur;
     private Bloom bloom;
     private CombineTextures combineTextures;
     private Gbuffer gbuffer;
     private int noiseTexture;
+
     private ShadowRenderer shadowRenderer;
     private LightingPassShader lightingPassShader;
     private VolumetricLighting volumetricLighting;
@@ -65,13 +72,26 @@ public class Renderer {
     private BilateralBlur bilateralBlur;
     private BilateralBlur ssaoBlur;
 
+    private VolumetricFrameBuffer historyFbo;
+
+
+    private TemporalAccumulation temporalAccumulation;
+
+
     private Fbo lightFbo;
     private final ArrayList<Entity> shadowedEntities = new ArrayList<>();
+
+    private CloudNoiseGenerator cloudNoiseGenerator;
+
+    private Matrix4f viewMatrix;
+
+    private Matrix4f prevViewMatrix = new Matrix4f();
 
 
     private float volumetricFogDensity;
     private float volumetricAlbedo;
-    private CombineTextures combineTexturesAdd;
+
+    private VolumetricBlend volumetricBlend;
 
     private static final int SSAO_KERNEL_SIZE = 16;
     
@@ -88,19 +108,18 @@ public class Renderer {
         this.lightFbo = new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE);
         this.waterDudvTexture = waterDudvTexture;
         this.combineTextures = new CombineTextures(false);
-        this.combineTexturesAdd = new CombineTextures(true);
         this.waterNormalMap = waterNormalMap;
-        this.gaussianBlur = new GaussianBlur(5);
         this.bloom = new Bloom();
         this.lightingPassShader = new LightingPassShader();
         this.volumetricStepSize = 1.45f;
         this.bilateralBlur = new BilateralBlur(gbuffer, 1);
-        this.ssaoBlur = new BilateralBlur(gbuffer, 1);
-
-
+        this.ssaoBlur = new BilateralBlur(gbuffer, 3);
+        this.cloudNoiseGenerator = new CloudNoiseGenerator(128, 128, 128, (int) (Math.random() * 100000), 0.085f, 8, 0.7f);
         this.vignette = new Vignette();
         this.toneMapping = new ToneMapping(1.8f);
-
+        this.historyFbo = new VolumetricFrameBuffer(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE);
+        this.volumetricBlend = new VolumetricBlend(historyFbo);
+        this.temporalAccumulation = new TemporalAccumulation(historyFbo, gbuffer);
         noiseTexture = generateNoiseTexture();
         glEnable(GL11.GL_CULL_FACE);
         GL11.glCullFace(GL11.GL_BACK);
@@ -110,37 +129,18 @@ public class Renderer {
         GL11.glEnable(GL30.GL_CLIP_DISTANCE0);
         //GL11.glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         this.ssaoShader = ssaoShader;
-        shader.start();
+        ssaoShader.init();
+        waterShader.init();
+        lightingPassShader.init();
+        shader.init();
+        terrainShader.init();
+
         createProjectionMatrix();
-        shader.connectTextureUnits();
-        shader.loadProjectionMatrix(projectionMatrix);
-        shader.stop();
-        terrainShader.start();
-        terrainShader.loadProjectionMatrix(projectionMatrix);
-        terrainShader.connectTextureUnits();
-        terrainShader.stop();
-        waterShader.start();
-        waterShader.connectTextureUnits();
-        waterShader.loadProjectionMatrix(projectionMatrix);
-        waterShader.stop();
-
-        ssaoShader.start();
-        ssaoShader.connectTextureUnits();
-        ssaoShader.loadSamplingKernels(generateRandomSampleKernels());
-        ssaoShader.loadProjectionMatrix(projectionMatrix);
-        ssaoShader.stop();
-
-        lightingPassShader.start();
-        lightingPassShader.connectTextureUnits();
-        lightingPassShader.stop();
-
-
 
 
         GLFW.glfwSetFramebufferSizeCallback(Main.getDisplayManager().getWindow(), (long window, int width, int height) -> {
             glViewport(0, 0, width, height);
             createProjectionMatrix();
-            fbos.initialiseSceneFrameBuffer();
 
         });
         this.volumetricFogDensity = 0.003f;
@@ -153,7 +153,7 @@ public class Renderer {
 
     public void initShadowsAndVolumetricLighting() {
         this.shadowRenderer = new ShadowRenderer(Main.getDisplayManager().getPlayer(), light);
-        this.volumetricLighting = new VolumetricLighting(light, gbuffer, shadowRenderer);
+        this.volumetricLighting = new VolumetricLighting(light, gbuffer, shadowRenderer, cloudNoiseGenerator);
 
     }
 
@@ -173,7 +173,8 @@ public class Renderer {
             createProjectionMatrix();
         }
         shader.start();
-        shader.loadViewMatrix(player);
+        viewMatrix = GameMath.createViewMatrix(player);
+        shader.loadViewMatrix(viewMatrix);
         shader.loadClipPlane(clipPlane);
         shader.loadProjectionMatrix(projectionMatrix);
         if (heldItem != null) {
@@ -193,7 +194,7 @@ public class Renderer {
         terrainShader.start();
         terrainShader.loadProjectionMatrix(projectionMatrix);
         terrainShader.loadClipPlane(clipPlane);
-        terrainShader.loadViewMatrix(player);
+        terrainShader.loadViewMatrix(viewMatrix);
         for (Terrain terrain : terrains) {
             renderTerrain(terrain);
         }
@@ -201,9 +202,10 @@ public class Renderer {
 
         waterShader.start();
         waterShader.loadProjectionMatrix(projectionMatrix);
-        waterShader.loadViewMatrix(player);
+        waterShader.loadViewMatrix(player, viewMatrix);
         moveFactor += (float) (WAVE_SPEED * Main.getDisplayManager().getFrameTimeInSeconds());
         moveFactor %= 1;
+        cloudMoveFactor += (float) (CLOUD_SPEED * Main.getDisplayManager().getFrameTimeInSeconds());
         waterShader.loadMoveFactor(moveFactor);
         renderWater();
         waterShader.stop();
@@ -319,9 +321,11 @@ public class Renderer {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         lightingPassShader.start();
         lightingPassShader.loadLight(light);
-        lightingPassShader.loadViewMatrix(GameMath.createViewMatrix(Main.getDisplayManager().getPlayer()));
+        lightingPassShader.loadViewMatrix(viewMatrix);
         lightingPassShader.loadToShadowMapSpace(shadowRenderer.getToShadowMapSpaceMatrix());
-        lightingPassShader.loadInversePlayerViewMatrix(GameMath.createViewMatrix(Main.getDisplayManager().getPlayer()).invert());
+        Matrix4f matrix = new Matrix4f();
+        viewMatrix.invert(matrix);
+        lightingPassShader.loadInversePlayerViewMatrix(matrix);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL_TEXTURE_2D, gbuffer.getTexture());
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
@@ -358,6 +362,14 @@ public class Renderer {
         vBlur.bindFrameBuffer();
         hBlur.render(fullScreenQuad);
         vBlur.unbindFrameBuffer();
+        hBlur.bindFrameBuffer();
+        vBlur.render(fullScreenQuad);
+        hBlur.unbindFrameBuffer();
+
+        vBlur.bindFrameBuffer();
+        hBlur.render(fullScreenQuad);
+        vBlur.unbindFrameBuffer();
+
         combineTextures.bindFrameBuffer();
         vBlur.render(fullScreenQuad);
         combineTextures.unbindFrameBuffer();
@@ -378,13 +390,42 @@ public class Renderer {
         } else {
             volumetricLighting.setVolumetricParams(light.getColor(), volumetricStepSize, light.getFogAnisotropy(), volumetricFogDensity,  volumetricAlbedo);
         }
-        vignette.bindFrameBuffer();
+        Matrix4f inverseProjectionMatrix = new Matrix4f();
+        this.projectionMatrix.invert(inverseProjectionMatrix);
+        volumetricLighting.setCloudMoveFactor(cloudMoveFactor);
+        volumetricLighting.setInverseProjectionMatrix(inverseProjectionMatrix);
+
+//        bilateralBlur.getVBlur().bindFrameBuffer();
+//        volumetricLighting.render(fullScreenQuad);
+//        bilateralBlur.getVBlur().unbindFrameBuffer();
+//        bilateralBlur.getHBlur().bindFrameBuffer();
+//        bilateralBlur.getVBlur().render(fullScreenQuad);
+//        bilateralBlur.getHBlur().unbindFrameBuffer();
+
+
+        temporalAccumulation.bindFrameBuffer();
         volumetricLighting.render(fullScreenQuad);
+        temporalAccumulation.unbindFrameBuffer();
+
+        temporalAccumulation.setViewMatrices(prevViewMatrix, viewMatrix, projectionMatrix);
+        temporalAccumulation.setCloudMoveFactor(cloudMoveFactor);
+        volumetricBlend.bindFrameBuffer();
+        temporalAccumulation.render(fullScreenQuad);
+        volumetricBlend.unbindFrameBuffer();
+        historyFbo.updateHistoryBuffer();
+
+        volumetricBlend.setOriginalTexture(volumetricLighting.getFbo().getTexture());
+
+        vignette.bindFrameBuffer();
+        volumetricBlend.render(fullScreenQuad);
         vignette.unbindFrameBuffer();
+//        volumetricFbo.updateHistoryBuffer();
         toneMapping.bindFrameBuffer();
         vignette.render(fullScreenQuad);
         toneMapping.unbindFrameBuffer();
         toneMapping.render(fullScreenQuad);
+
+        prevViewMatrix = viewMatrix;
 
 
 
@@ -406,7 +447,7 @@ public class Renderer {
         GL30.glBindVertexArray(0);
     }
 
-    private static Vector3f[] generateRandomSampleKernels() {
+    public static Vector3f[] generateRandomSampleKernels() {
         Vector3f[] vectors = new Vector3f[SSAO_KERNEL_SIZE];
         for (int i = 0; i < SSAO_KERNEL_SIZE; i++) {
             Vector3f vector = new Vector3f((float) (Math.random() * 2 - 1), (float) (Math.random() * 2 - 1), (float) Math.random()).normalize();
@@ -448,7 +489,6 @@ public class Renderer {
 
 
     public void cleanUp() {
-        gaussianBlur.cleanUp();
         combineTextures.cleanUp();
         bloom.cleanUp();
         ssaoShader.cleanUp();
@@ -464,6 +504,9 @@ public class Renderer {
         vignette.cleanUp();
         bilateralBlur.cleanUp();
         ssaoBlur.cleanUp();
+        volumetricBlend.cleanUp();
+        temporalAccumulation.cleanUp();
+        toneMapping.cleanUp();
         glDeleteTextures(noiseTexture);
     }
 

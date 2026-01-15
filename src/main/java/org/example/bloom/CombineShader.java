@@ -9,10 +9,13 @@ public class CombineShader extends ShaderProgram {
     private int locationTexture2;
     private int locationAdd;
 
+    private boolean add;
 
 
-    public CombineShader() {
+
+    public CombineShader(boolean add) {
         super(VERTEX_PATH, FRAGMENT_PATH);
+        this.add = add;
     }
 
     @Override
@@ -34,7 +37,15 @@ public class CombineShader extends ShaderProgram {
         super.loadInt(locationTexture2, 1);
     }
 
-    public void loadAdd(boolean add) {
+    private void loadAdd(boolean add) {
         super.loadBoolean(locationAdd, add);
+    }
+
+    @Override
+    public void init() {
+        this.start();
+        this.connectTextureUnits();
+        this.loadAdd(add);
+        this.stop();
     }
 }

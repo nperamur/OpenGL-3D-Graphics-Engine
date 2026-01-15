@@ -11,28 +11,27 @@ import static org.lwjgl.opengl.GL11C.*;
 public class BilateralVerticalBlur extends PostProcessEffect {
     private BilateralVerticalBlurShader shader;
     private Gbuffer gbuffer;
-    private int locationTargetHeight;
+
+    private int strength;
 
 
-    public BilateralVerticalBlur(Gbuffer gbuffer, int targetHeight) {
-        super(new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
-        shader = new BilateralVerticalBlurShader();
-        shader.start();
-        shader.connectTextureUnits();
-        shader.loadNumSamples(5);
-        shader.loadTargetHeight(targetHeight);
-        shader.stop();
+    public BilateralVerticalBlur(Gbuffer gbuffer, int strength) {
+        super(new Fbo(Main.getDisplayManager().getWidth() / strength, Main.getDisplayManager().getHeight() / strength, Fbo.NONE));
+        shader = new BilateralVerticalBlurShader(Main.getDisplayManager().getHeight() / strength, 5);
+        shader.init();
+        this.strength = strength;
         this.gbuffer = gbuffer;
     }
 
     @Override
     public void render(Model fullScreenQuad) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        if (Main.getDisplayManager().getHeight() != super.getFbo().getHeight() || Main.getDisplayManager().getWidth() != super.getFbo().getWidth()) {
-            super.getFbo().resize(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight());
+        if (Main.getDisplayManager().getHeight() / strength != super.getFbo().getHeight() || Main.getDisplayManager().getWidth() / strength != super.getFbo().getWidth()) {
+            super.getFbo().resize(Main.getDisplayManager().getWidth() / strength, Main.getDisplayManager().getHeight() / strength);
         }
 
         shader.start();
+        shader.loadTargetHeight((float) Main.getDisplayManager().getHeight() / strength);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, super.getFbo().getTexture());
         GL13.glActiveTexture(GL13.GL_TEXTURE1);

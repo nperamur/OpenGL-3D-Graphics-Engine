@@ -11,9 +11,14 @@ public class BilateralVerticalBlurShader extends ShaderProgram {
     private int locationTargetHeight;
     private int locationNumSamples;
 
+    private int targetHeight;
+    private int numSamples;
 
-    public BilateralVerticalBlurShader() {
+
+    public BilateralVerticalBlurShader(int targetHeight, int numSamples) {
         super(BLUR_VERTEX, BLUR_FRAGMENT);
+        this.numSamples = numSamples;
+        this.targetHeight = targetHeight;
     }
 
     @Override
@@ -44,7 +49,16 @@ public class BilateralVerticalBlurShader extends ShaderProgram {
     }
 
 
-    public void loadNumSamples(int numSamples) {
+    private void loadNumSamples(int numSamples) {
         super.loadInt(locationNumSamples, numSamples);
+    }
+
+    @Override
+    public void init() {
+        this.start();
+        this.connectTextureUnits();
+        this.loadNumSamples(5);
+        this.loadTargetHeight(targetHeight);
+        this.stop();
     }
 }

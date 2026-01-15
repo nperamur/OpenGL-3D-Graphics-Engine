@@ -13,11 +13,8 @@ public class CombineTextures extends PostProcessEffect {
 
     public CombineTextures(boolean add) {
         super(new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
-        combineShader = new CombineShader();
-        combineShader.start();
-        combineShader.connectTextureUnits();
-        combineShader.loadAdd(add);
-        combineShader.stop();
+        combineShader = new CombineShader(add);
+        combineShader.init();
     }
 
     @Override

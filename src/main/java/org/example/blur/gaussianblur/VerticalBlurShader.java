@@ -9,9 +9,14 @@ public class VerticalBlurShader extends ShaderProgram {
     private int locationTexture;
     private int locationNumSamples;
 
+    private int targetFboHeight;
+    private int numSamples;
 
-    public VerticalBlurShader() {
+
+    public VerticalBlurShader(int targetFboHeight, int numSamples) {
         super(VERTICAL_BLUR_VERTEX, VERTICAL_BLUR_FRAGMENT);
+        this.targetFboHeight = targetFboHeight;
+        this.numSamples = numSamples;
     }
 
     @Override
@@ -36,8 +41,16 @@ public class VerticalBlurShader extends ShaderProgram {
         super.loadInt(locationTexture, 0);
     }
 
-    public void loadNumSamples(int numSamples) {
+    private void loadNumSamples(int numSamples) {
         super.loadInt(locationNumSamples, numSamples);
     }
 
+    @Override
+    public void init() {
+        this.start();
+        this.connectTextureUnits();
+        this.loadTargetHeight(targetFboHeight);
+        this.loadNumSamples(numSamples);
+        this.stop();
+    }
 }

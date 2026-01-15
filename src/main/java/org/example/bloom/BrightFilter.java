@@ -15,9 +15,7 @@ public class BrightFilter extends PostProcessEffect {
         super(new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
         this.threshold = threshold;
         this.shader = new BrightFilterShader();
-        shader.start();
-        shader.connectTextureUnits();
-        shader.stop();
+        shader.init();
         this.getFbo().addLowResFrameBuffer(6);
     }
 

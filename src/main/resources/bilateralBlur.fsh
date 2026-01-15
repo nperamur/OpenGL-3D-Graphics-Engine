@@ -10,11 +10,6 @@ uniform sampler2D gNormal;
 
 const float KERNEL_SIZE = 5;
 
-//const float gaussianWeights[] = float[] (
-    //0.0093, 0.028002, 0.065984, 0.121703, 0.175713,
-  //  0.198596, 0.175713, 0.121703, 0.065984, 0.028002, 0.0093
-//);
-
 const float omega = 5;
 const float absorption = 1.0 / (2.0 * omega * omega);
 

@@ -54,10 +54,7 @@ public class TerrainShader extends ShaderProgram {
 
 
 
-    public void loadViewMatrix(Player player) {
-        super.loadMatrix(locationViewMatrix, GameMath.createViewMatrix(player));
 
-    }
 
     public void loadViewMatrix(Matrix4f viewMatrix) {
         super.loadMatrix(locationViewMatrix, viewMatrix);
@@ -78,6 +75,7 @@ public class TerrainShader extends ShaderProgram {
         super.loadVector(locationLightColor, light.getColor());
     }
 
+    @Override
     public void connectTextureUnits() {
         super.loadInt(locationBackgroundTexture, 1);
         super.loadInt(locationRTexture, 2);

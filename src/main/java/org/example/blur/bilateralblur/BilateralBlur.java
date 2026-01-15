@@ -10,8 +10,8 @@ public class BilateralBlur {
 
     public BilateralBlur(Gbuffer gbuffer, int strength) {
         this.gbuffer = gbuffer;
-        hBlur = new BilateralHorizontalBlur(gbuffer, Main.getDisplayManager().getWidth() / strength);
-        vBlur = new BilateralVerticalBlur(gbuffer, Main.getDisplayManager().getHeight() / strength);
+        hBlur = new BilateralHorizontalBlur(gbuffer, strength);
+        vBlur = new BilateralVerticalBlur(gbuffer, strength);
     }
 
 
