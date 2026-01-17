@@ -48,6 +48,8 @@ public class VolumetricLighting extends PostProcessEffect {
 
     private int frameCount;
 
+    private Vector3f skyColor;
+
     public VolumetricLighting(Sunlight light, Gbuffer gbuffer, ShadowRenderer shadowRenderer, CloudNoiseGenerator cloudNoiseGenerator) {
         super(new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
         shader = new VolumetricLightingShader();
@@ -71,6 +73,7 @@ public class VolumetricLighting extends PostProcessEffect {
         shader.loadMoveFactor(this.moveFactor);
         shader.loadLightColor(this.lightColor);
         shader.loadFogDensity(this.fogDensity);
+        shader.loadSkyColor(Main.getDisplayManager().getSkyColor());
         shader.loadInverseProjectionMatrix(inverseProjectionMatrix);
         shader.loadAnisotropy(this.fogAnisotropy);
         shader.loadAlbedo(this.albedo);
@@ -165,4 +168,5 @@ public class VolumetricLighting extends PostProcessEffect {
     public void setCloudMoveFactor(float moveFactor) {
         this.moveFactor = moveFactor;
     }
+
 }

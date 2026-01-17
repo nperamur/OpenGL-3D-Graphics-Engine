@@ -38,6 +38,8 @@ public class DisplayManager {
     private int windowPosX = 100;
     private int windowPosY = 100;
 
+    private Vector3f skyColor;
+
 
     private boolean fullscreen = false;
     private boolean f11PressedLastFrame;
@@ -340,7 +342,7 @@ public class DisplayManager {
             }
             skyDay = skyDay.mul(1 - sunsetFactor).add(sunsetColor.mul(sunsetFactor));
 
-            Vector3f skyColor = nightColor.mul(1 - t).add(skyDay.mul(t));
+            this.skyColor = nightColor.mul(1 - t).add(skyDay.mul(t));
 
             skyColor.x = Math.min(skyColor.x, 1.0f);
             skyColor.y = Math.min(skyColor.y, 1.0f);
@@ -462,6 +464,10 @@ public class DisplayManager {
     }
     public ImGuiImplGlfw getImGuiImplGlfw() {
         return this.imGuiImplGlfw;
+    }
+
+    public Vector3f getSkyColor() {
+        return this.skyColor;
     }
 
 

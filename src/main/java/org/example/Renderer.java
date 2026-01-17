@@ -51,6 +51,8 @@ public class Renderer {
     private float cloudMoveFactor;
     private TexturedModel waterModel;
     private FrameBuffers fbos;
+    private final Matrix4f invViewMatrix = new Matrix4f();
+    private final Matrix4f invProjMatrix = new Matrix4f();
     private int waterDudvTexture;
     private static final float WAVE_SPEED = 0.02f;
     private static final float CLOUD_SPEED = 0.02f;
@@ -114,7 +116,7 @@ public class Renderer {
         this.volumetricStepSize = 1.45f;
         this.bilateralBlur = new BilateralBlur(gbuffer, 1);
         this.ssaoBlur = new BilateralBlur(gbuffer, 3);
-        this.cloudNoiseGenerator = new CloudNoiseGenerator(128, 128, 128, (int) (Math.random() * 100000), 0.085f, 8, 0.7f);
+        this.cloudNoiseGenerator = new CloudNoiseGenerator(128, 128, 128, (int) (Math.random() * 100000), 0.055f, 8, 0.7f);
         this.vignette = new Vignette();
         this.toneMapping = new ToneMapping(1.8f);
         this.historyFbo = new VolumetricFrameBuffer(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE);
@@ -323,9 +325,8 @@ public class Renderer {
         lightingPassShader.loadLight(light);
         lightingPassShader.loadViewMatrix(viewMatrix);
         lightingPassShader.loadToShadowMapSpace(shadowRenderer.getToShadowMapSpaceMatrix());
-        Matrix4f matrix = new Matrix4f();
-        viewMatrix.invert(matrix);
-        lightingPassShader.loadInversePlayerViewMatrix(matrix);
+        viewMatrix.invert(invViewMatrix);
+        lightingPassShader.loadInversePlayerViewMatrix(invViewMatrix);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL_TEXTURE_2D, gbuffer.getTexture());
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
@@ -390,10 +391,10 @@ public class Renderer {
         } else {
             volumetricLighting.setVolumetricParams(light.getColor(), volumetricStepSize, light.getFogAnisotropy(), volumetricFogDensity,  volumetricAlbedo);
         }
-        Matrix4f inverseProjectionMatrix = new Matrix4f();
-        this.projectionMatrix.invert(inverseProjectionMatrix);
+
+        this.projectionMatrix.invert(invProjMatrix);
         volumetricLighting.setCloudMoveFactor(cloudMoveFactor);
-        volumetricLighting.setInverseProjectionMatrix(inverseProjectionMatrix);
+        volumetricLighting.setInverseProjectionMatrix(invProjMatrix);
 
 //        bilateralBlur.getVBlur().bindFrameBuffer();
 //        volumetricLighting.render(fullScreenQuad);
@@ -507,6 +508,7 @@ public class Renderer {
         volumetricBlend.cleanUp();
         temporalAccumulation.cleanUp();
         toneMapping.cleanUp();
+        historyFbo.cleanUp();
         glDeleteTextures(noiseTexture);
     }
 

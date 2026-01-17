@@ -15,10 +15,6 @@ uniform float prevMoveFactor;
 uniform float moveFactor;
 uniform mat4 inverseViewMatrix;
 uniform mat4 inverseProjectionMatrix;
-
-
-
-
 in vec2 pass_textureCoords;
 layout(location = 0) out vec4 out_color;
 layout(location = 1) out vec4 out_transmittance;

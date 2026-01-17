@@ -16,6 +16,7 @@ uniform float albedo;
 uniform float stepSize;
 uniform mat4 inverseProjectionMatrix;
 uniform float moveFactor;
+uniform vec3 skyColor;
 
 uniform int randomNumber;
 
@@ -27,14 +28,17 @@ const float totalDistance = 145;
 const float lightStrength = 500;
 
 const float cloudDist = 3000;
-const float cloudY = 180;
-const float cloudHeight = 300;
-const float cloudStepSize = 20;
+const float cloudY = 200;
+const float cloudHeight = 400;
+const float cloudStepSize = 40;
+
 
 const float cloudFadeStart = 2000;
 const float cloudFadeEnd = 3000;
 const float numCloudShadowSamples = 3;
 const float cloudAlbedo = 0.02;
+float dayCloudStrength = 500.0;
+float nightCloudStrength = 100.0;
 
 
 in vec2 pass_textureCoords;
@@ -61,7 +65,7 @@ float rand(vec2 p) {
 
 float getCloudDensity(vec3 noiseCoords, float distFromCamera) {
   float cloudDensity = texture(cloudNoiseTexture, noiseCoords).r;
-  cloudDensity = pow(cloudDensity, 3.3);
+  cloudDensity = pow(cloudDensity, 3);
   cloudDensity = smoothstep(0.1, 0.8, cloudDensity);
   float fadeFactor = 1.0 - smoothstep(cloudFadeStart, cloudFadeEnd, distFromCamera);
   cloudDensity *= fadeFactor;
@@ -106,6 +110,7 @@ void main(void) {
         vec3 cloudPos = cloudWorldSpace.xyz / cloudWorldSpace.w;
 
         vec3 cloudRayDir = normalize(cloudPos - cameraPos);
+        vec3 ambient = max(skyColor, vec3(0.125, 0.187, 0.25));
         if (cloudRayDir.y > 0) {
             //using placeholder number for now
             vec3 cloudRay = (cloudY / cloudRayDir.y) * cloudRayDir;
@@ -120,24 +125,36 @@ void main(void) {
               float phi = phaseFunction(normalize(lightPosition), cloudRayDir, anisotropy);
 
               transmittance = 1;
+              float sunHeight = normalize(lightPosition).y;
+
+              float cloudLightStrength = mix(nightCloudStrength, dayCloudStrength, smoothstep(-1, -0.2, sunHeight));
               float distFromCamera = length(cloudRay);
               for (float t = offset; t < cloudHeight; t += cloudStepSize) {
                   vec3 currentPos = cloudPosition + cloudRayDir * t;
 
-                  vec3 lightAmount = lightColor * lightStrength;
+                  vec3 lightAmount = lightColor * cloudLightStrength;
                   vec3 noiseCoords = vec3(currentPos.x + moveFactor * 100, currentPos.y, currentPos.z + moveFactor * 100) * 0.0004;
                   float cloudDensity = getCloudDensity(noiseCoords, distFromCamera);
                   float lightTransmittance = 1;
                   vec3 lightRay = normalize(lightPosition) * ((cloudHeight - currentPos.y) / numCloudShadowSamples);
-                  float offset = rand(floor(pixelCoords) + vec2(randomNumber)) * (1/cloudStepSize);
+                  float offset = rand(floor(pixelCoords) + vec2(randomNumber)) * (1/cloudStepSize) * 0.5;
+                  float lightAmbientTransmittance = 1;
+                  float ambientStepSize = (cloudHeight - currentPos.y) / numCloudShadowSamples;
                   for (float i = offset; i <= numCloudShadowSamples; i++) {
-                    vec3 lightPos = currentPos + lightRay * i;
-                    float lightCloudDensity = getCloudDensity(vec3(lightPos.x + moveFactor * 100, lightPos.y, lightPos.z + moveFactor * 100) * 0.0004, distFromCamera);
-                    lightTransmittance *= exp(-lightCloudDensity * length(lightRay));
+                    vec3 lightShadowPos = currentPos + lightRay * i;
+                    float lightShadowCloudDensity = getCloudDensity(vec3(lightShadowPos.x + moveFactor * 100, lightShadowPos.y, lightShadowPos.z + moveFactor * 100) * 0.0004, distFromCamera);
+                    lightTransmittance *= exp(-lightShadowCloudDensity * length(lightRay));
+                    vec3 lightAmbientPos = currentPos + vec3(0, ambientStepSize , 0) * i;
+                    float lightAmbientCloudDensity = getCloudDensity(vec3(lightAmbientPos.x + moveFactor * 100, lightAmbientPos.y, lightAmbientPos.z + moveFactor * 100) * 0.0004, distFromCamera);
+
+                    lightAmbientTransmittance *= exp(-lightAmbientCloudDensity * length(lightRay));
+
                   }
                   float powderTerm = 1.0 - exp(-cloudDensity * cloudStepSize * 2.0);
-                  float finalLight = lightTransmittance * powderTerm;
-                  accumulation += cloudAlbedo * phi * cloudDensity * cloudStepSize * lightAmount * transmittance * finalLight;
+                  vec3 lightShading = vec3(lightTransmittance * powderTerm) + vec3(0.1);
+                  vec3 lightContribution = cloudAlbedo * phi * lightAmount * lightShading;
+                  vec3 ambientContribution = lightAmbientTransmittance * ambient;
+                  accumulation += (lightContribution + ambientContribution) * cloudDensity * cloudStepSize * transmittance;
                   transmittance *= exp(-cloudDensity * cloudStepSize);
               }
 

@@ -39,6 +39,8 @@ public class VolumetricLightingShader extends ShaderProgram {
 
     private int locationRandomNumber;
 
+    private int locationSkyColor;
+
     public VolumetricLightingShader() {
         super(VERTEX_FILE, FRAGMENT_FILE);
     }
@@ -77,6 +79,8 @@ public class VolumetricLightingShader extends ShaderProgram {
         this.locationMoveFactor = super.getUniformLocation("moveFactor");
 
         this.locationRandomNumber = super.getUniformLocation("randomNumber");
+        this.locationSkyColor = super.getUniformLocation("skyColor");
+
 
     }
 
@@ -153,6 +157,10 @@ public class VolumetricLightingShader extends ShaderProgram {
     }
 
 
+
+    public void loadSkyColor(Vector3f skyColor) {
+        super.loadVector(locationSkyColor, skyColor);
+    }
 
 
 
