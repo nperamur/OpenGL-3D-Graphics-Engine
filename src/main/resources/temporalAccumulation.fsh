@@ -42,7 +42,7 @@ void main(void) {
       vec3 cameraPos = (inverseViewMatrix * vec4(0, 0, 0, 1)).xyz;
       cloudPos = inverseViewMatrix * (cloudPos / cloudPos.w);
       vec3 cloudRayDir = normalize(cloudPos.rgb - cameraPos);
-      vec3 cloudRay = (180 / cloudRayDir.y) * cloudRayDir;
+      vec3 cloudRay = ((265 - cameraPos.y) / cloudRayDir.y) * cloudRayDir;
       currPos = vec4(vec3(cameraPos.x + cloudRay.x, cameraPos.y + cloudRay.y, cameraPos.z + cloudRay.z), 1);
       reprojectedWorldPos = currPos;
 
