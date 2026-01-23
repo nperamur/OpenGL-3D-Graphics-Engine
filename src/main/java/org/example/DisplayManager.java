@@ -247,16 +247,16 @@ public class DisplayManager {
 
         double previousTime = glfwGetTime();
         float[] fogDensity = new float[1];
-        fogDensity[0] = 0.0020f;
+        fogDensity[0] = 0.000498f;
 
         float[] fogAlbedo = new float[1];
-        fogAlbedo[0] = 0.05f;
+        fogAlbedo[0] = 0.151f;
 
         float[] exposure = new float[1];
         exposure[0] = 1.8f;
 
         float[] stepSize = new float[1];
-        stepSize[0] = 1.45f;
+        stepSize[0] = 3f;
 
         while ( !glfwWindowShouldClose(window) ) {
             boolean f3Pressed = glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS;
@@ -277,7 +277,7 @@ public class DisplayManager {
                     if(ImGui.collapsingHeader("Volumetric Fog")) {
                         ImGui.sliderFloat("Density", fogDensity, 0f, 0.005f, "%.6f");
                         ImGui.sliderFloat("Albedo", fogAlbedo, 0, 0.5f, "%.6f");
-                        ImGui.sliderFloat("Step Size", stepSize, 0.05f, 3f);
+                        ImGui.sliderFloat("Step Size", stepSize, 1f, 6f);
 
                     }
                     if(ImGui.collapsingHeader("Tone Mapping")) {

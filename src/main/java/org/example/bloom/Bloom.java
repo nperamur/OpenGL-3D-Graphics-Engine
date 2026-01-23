@@ -13,7 +13,7 @@ public class Bloom {
 
     public Bloom() {
         this.brightFilter = new BrightFilter(0.5f);
-        this.gaussianBlur = new GaussianBlur(6);
+        this.gaussianBlur = new GaussianBlur(10);
         this.combineTextures = new CombineTextures(true);
 
     }
