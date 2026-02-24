@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.bvh.TriangleBVH;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.*;
 
@@ -25,22 +26,26 @@ public class Loader {
 
     private int positionsVBO;
 
-    public Model loadToVaoWithoutTexture(float[] positions, int[] indices) {
+    public Model loadToVaoWithoutTexture(float[] positions, int[] indices, String name) {
         int vaoID = createVao();
         bindIndicesVBO(indices);
         storeDataAttributeList(0, 3, positions);
         unbindVao();
-        return new Model(vaoID, indices.length);
+        TriangleBVH bvh = new TriangleBVH();
+        bvh.addData(positions, indices);
+        return new Model(vaoID, indices.length, bvh, name);
     }
 
-    public Model loadToVao(float[] positions, float[] textureCoords, int[] indices, float[] normals) {
+    public Model loadToVao(float[] positions, float[] textureCoords, int[] indices, float[] normals, String name) {
         int vaoID = createVao();
         bindIndicesVBO(indices);
         this.positionsVBO = storeDataAttributeList(0, 3, positions);
         storeDataAttributeList(1, 2, textureCoords);
         storeDataAttributeList(2, 3, normals);
         unbindVao();
-        return new Model(vaoID, indices.length);
+        TriangleBVH bvh = new TriangleBVH();
+        bvh.addData(positions, indices);
+        return new Model(vaoID, indices.length, bvh, name);
     }
 
     private int createVao() {

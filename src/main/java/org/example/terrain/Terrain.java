@@ -37,6 +37,8 @@ public class Terrain {
         this.blendMap = blendMap;
         this.loader = loader;
         this.model = generateTerrain(loader, heightMap);
+        this.model.setHasCollision(true);
+        this.model.setHasRaytracedShadows(false);
 
     }
 
@@ -85,7 +87,7 @@ public class Terrain {
                 indices[pointer++] = bottomRight;
             }
         }
-        return loader.loadToVao(vertices, textureCoords, indices, normals);
+        return loader.loadToVao(vertices, textureCoords, indices, normals, "Terrain");
     }
 
 
@@ -154,6 +156,7 @@ public class Terrain {
             answer = GameMath.barryCentric(new Vector3f(1, heights[gridX][gridZ], 0), new Vector3f(1, heights[gridX][gridZ], 1), new Vector3f(0, heights[gridX][gridZ], 1), new Vector2f(xCoord, zCoord));
 
         }
+
 
         return answer;
     }

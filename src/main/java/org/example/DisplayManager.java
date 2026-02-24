@@ -5,6 +5,7 @@ import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
 import imgui.internal.ImGuiContext;
 import org.example.fbo.Gbuffer;
+import org.example.player.Player;
 import org.example.terrain.Terrain;
 import org.example.terrain.TerrainShader;
 import org.example.terrain.TerrainTexturePack;
@@ -138,7 +139,9 @@ public class DisplayManager {
                 1, 2, 3   // Triangle 2 (Vertex 1, 2, 3)
         };
         ModelTexture texture = new ModelTexture(loader.loadTexture("water"));
-        TexturedModel waterModel = new TexturedModel(loader.loadToVao(positions, textureCoords, waterIndices, new float[0]), texture);
+        TexturedModel waterModel = new TexturedModel(loader.loadToVao(positions, textureCoords, waterIndices, new float[0], "Water"), texture);
+        waterModel.getRawModel().setHasCollision(false);
+        waterModel.getRawModel().setHasRaytracedShadows(false);
         FrameBuffers fbos = new FrameBuffers();
         SsaoShader ssaoShader = new SsaoShader(Renderer.generateRandomSampleKernels());
         Gbuffer gbuffer = new Gbuffer();
@@ -186,26 +189,24 @@ public class DisplayManager {
 
         TexturedModel model = new TexturedModel(ModelLoader.load("FirstPine", loader), new ModelTexture(loader.loadTexture("pinesTexture")));
 
-        Item entity = new Item(new TexturedModel(ModelLoader.load("soccer_ball", loader), new ModelTexture(loader.loadTexture("soccer_texture"))), 0, 0, 0, 1f);
+        //Item entity = new Item(new TexturedModel(ModelLoader.load("soccer_ball", loader), new ModelTexture(loader.loadTexture("soccer_texture"))), 0, 0, 0, 1f);
 
-        Entity entity2 = new Entity(model, new Vector3f(0, 9, 0f), 0,0, 0, 1f);
-
-        Entity sunEntity = new Entity(new TexturedModel(light.getSunModel(), new ModelTexture(loader.loadTexture("sun"))), light.getPosition(), 0, 0, 0, 800);
-        for (int i = 0; i < 1000; i++) {
+       Entity sunEntity = new Entity(new TexturedModel(light.getSunModel(), new ModelTexture(loader.loadTexture("sun"))), light.getPosition(), 0, 0, 0, 800);
+       for (int i = 0; i < 1000; i++) {
             float worldX = (float) Math.random() * Terrain.SIZE * 4 - 2 * Terrain.SIZE;
             float worldZ = (float) Math.random() * Terrain.SIZE * 4 - 2 * Terrain.SIZE;
             float height = terrainsArray[(int) (Math.ceil(worldX / Terrain.SIZE)) + 1][(int) (Math.ceil(worldZ / Terrain.SIZE)) + 1].getHeightOfTerrain(worldX, worldZ);
             if (height > Renderer.WATER_Y) {
-                renderer.addEntity(new Entity(model, new Vector3f(worldX, height - 5, worldZ), 0,0, 0, 1f));
+                Entity treeEntity = new Entity(model, new Vector3f(worldX, height - 8, worldZ), 0,0, 0, 1f);
+                renderer.addEntity(treeEntity);
+//                renderer.addEntity(new Entity(new TexturedModel(loader.loadToVao(vertices, textureCoords, indices, new float[0], "Box " + i), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(worldX + 10, height + 1, worldZ + 10), 0, 0, 0, 1));
             }
-        }
+       }
 //        renderer.setHeldItem(entity);
-        renderer.addEntity(entity2);
-        renderer.addEntity(new Entity(new TexturedModel(loader.loadToVao(vertices, textureCoords, indices, new float[0]), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(0, 50, 0), 0, 30, 0, 50));
-
-
-
+        Entity testBox = new Entity(new TexturedModel(loader.loadToVao(vertices, textureCoords, indices, new float[0], "Test Box"), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(60, 50, 0), 0, 30, 0, 50);
+        renderer.addEntity(testBox);
         renderer.addEntity(sunEntity);
+        renderer.syncWorldObjects();
         //renderer.addEntity(new Entity(model, new Vector3f(-1, -5000.7f, -4), 0, 0, 0, 10000));
 //        float[] vertices2 = {
 //                0, 0, 0,
@@ -238,7 +239,8 @@ public class DisplayManager {
                 0.0f, 0.0f, 1.0f, // Bottom-left
                 0.0f, 0.0f, 1.0f, // Bottom-right
                 0.0f, 0.0f, 1.0f  // Top-right
-        });
+        },
+                "Screen Quad");
 
         renderer.initShadowsAndVolumetricLighting();
         if (glfwRawMouseMotionSupported()) {

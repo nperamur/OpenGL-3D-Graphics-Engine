@@ -47,11 +47,9 @@ void main(void) {
       reprojectedWorldPos = currPos;
 
       weight = 0.08f;
+      reprojectedWorldPos = vec4(reprojectedWorldPos.x + (moveFactor - prevMoveFactor) * 100,
+                    reprojectedWorldPos.y, reprojectedWorldPos.z + (moveFactor - prevMoveFactor) * 100, reprojectedWorldPos.w);
 
-    }
-    if (origPos.a == 0) {
-      reprojectedWorldPos = vec4(reprojectedWorldPos.x - (moveFactor - prevMoveFactor) * 100,
-                    reprojectedWorldPos.y, reprojectedWorldPos.z - (moveFactor - prevMoveFactor) * 100, reprojectedWorldPos.w);
     }
     vec4 clipReprojected = projectionMatrix * prevViewMatrix * reprojectedWorldPos;
     vec2 reprojectedCoords = (clipReprojected / clipReprojected.w).xy * 0.5 + 0.5;
@@ -72,12 +70,10 @@ void main(void) {
     float depthPrev = prevPos.z;
     bool badHistory = (origPos.a == 0 && prevPos.a > 0 || origPos.a > 0 && prevPos.a == 0 || abs(depthCurr - depthPrev) > 10);
 
+    float discardFactor = float(isOffScreen || badHistory);
 
-    if (isOffScreen || badHistory) {
-        out_color = vec4(volumetricColor.rgb, 1.0);
-        out_transmittance = vec4(vec3(transmittance), 1.0);
-    } else {
-        out_color = vec4(mix(prevColor.rgb, volumetricColor.rgb, weight), 1.0);
-        out_transmittance = vec4(vec3(mix(prevTransmittance, transmittance, weight)), 1.0);
-    }
+    float finalWeight = mix(weight, 1.0, discardFactor);
+
+    out_color = vec4(mix(prevColor.rgb, volumetricColor.rgb, finalWeight), 1.0);
+    out_transmittance = vec4(vec3(mix(prevTransmittance, transmittance, finalWeight)), 1.0);
 }

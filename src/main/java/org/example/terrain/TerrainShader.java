@@ -1,8 +1,6 @@
 package org.example.terrain;
 
-import org.example.GameMath;
 import org.example.Light;
-import org.example.Player;
 import org.example.ShaderProgram;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;

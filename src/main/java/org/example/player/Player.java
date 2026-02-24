@@ -1,8 +1,17 @@
-package org.example;
+package org.example.player;
 
+import org.example.Item;
+import org.example.Main;
+import org.example.Renderer;
+import org.example.ShaderProgram;
+import org.example.bvh.*;
 import org.example.terrain.Terrain;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
 
 public class Player {
     private Vector3f position = new Vector3f(0, 0, 0);
@@ -19,16 +28,17 @@ public class Player {
     private float fallHeight;
     private float currentHeightOfTerrain;
     private boolean crouching;
+    private boolean isCollided;
     private static final float GRAVITY = 1f;
     private float movementSpeed = 0.2f;
     private boolean sprinting;
     private double fallStartTime;
     private Item heldItem;
 
-    private static final float MASS = 1;
-    private static final float WATER_DENSITY = 0.5f;
 
+    private Vector3f prevFramePos = new Vector3f();
 
+    private PlayerCapsule playerCapsule;
 
 
     public Player(double pitch, double yaw, double roll, long window) {
@@ -36,6 +46,7 @@ public class Player {
         this.yaw = yaw;
         this.roll = roll;
         this.window = window;
+        this.playerCapsule = new PlayerCapsule(1.5f, this.position);
         GLFW.glfwSetCursorPosCallback(window, (n, xpos, ypos) -> {
             if (locked) {
                 this.yaw += (xpos - prevX) * 0.1;
@@ -61,17 +72,13 @@ public class Player {
             position.y = heightOfTerrain;
         }
 
-        if (position.y < Renderer.WATER_Y) {
-            float forceBuoyancy = WATER_DENSITY * MASS;
-            float acceleration = (forceBuoyancy - MASS * GRAVITY) / MASS;
 
-        }
-
+        prevFramePos = new Vector3f(position);
         if (isJumping) {
             double t = System.nanoTime() - jumpStartTime;
             t /= 200000000;
             this.position.y = (float) (((double) -1 / 2 * GRAVITY * Math.pow(t, 2) + t * 1.7f) + jumpHeight);
-        } else if (position.y > heightOfTerrain) {
+        } else if (position.y > heightOfTerrain && !isCollided) {
             if (fallStartTime == -1) {
                 fallStartTime = 0;
                 fallHeight = position.y;
@@ -80,6 +87,19 @@ public class Player {
             fallStartTime += Main.getDisplayManager().getFrameTimeInSeconds();
         }
         handleInputs();
+        CompletableFuture.supplyAsync(() -> {
+            WorldObjectData worldObjectData = Main.getDisplayManager().getRenderer().getWorldObjectData();
+            ArrayList<TriangleGroup> triangleGroups = worldObjectData.rayCastNearbyTrianglesWithCollisionsEnabled(position, new Vector3f(position).sub(prevFramePos));
+            return playerCapsule.resolveCollisions(triangleGroups, position, 100);
+        }).thenAccept(collided -> {
+            if (!isCollided && collided) {
+                fallStartTime = -1;
+                isJumping = false;
+                isCollided = true;
+            } else {
+                isCollided = false;
+            }
+        });
     }
 
     public Vector3f getPosition() {
@@ -107,7 +127,11 @@ public class Player {
             return;
         }
         jumpStartTime = System.nanoTime();
-        jumpHeight = currentHeightOfTerrain;
+        if (!isCollided) {
+            jumpHeight = currentHeightOfTerrain;
+        } else {
+            jumpHeight = position.y;
+        }
         this.isJumping = true;
     }
 
@@ -156,6 +180,7 @@ public class Player {
         } else {
             movementSpeed = 15f;
         }
+
 
 
     }

@@ -1,6 +1,7 @@
 package org.example.shadow;
 
 import org.example.*;
+import org.example.player.Player;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;

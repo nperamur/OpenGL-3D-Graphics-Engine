@@ -20,6 +20,7 @@ public class LightingPassShader extends ShaderProgram {
     private int locationLightColor;
     private int locationNormals;
     private int locationViewMatrix;
+    private int locationRaytracedShadows;
 
     public LightingPassShader() {
         super(VERTEX_FILE, FRAGMENT_FILE);
@@ -45,6 +46,7 @@ public class LightingPassShader extends ShaderProgram {
         this.locationLightPosition = super.getUniformLocation("lightPosition");
         this.locationLightColor = super.getUniformLocation("lightColor");
         this.locationViewMatrix = super.getUniformLocation("viewMatrix");
+        this.locationRaytracedShadows = super.getUniformLocation("raytracedShadows");
     }
 
     public void connectTextureUnits() {
@@ -52,7 +54,7 @@ public class LightingPassShader extends ShaderProgram {
         super.loadInt(locationPosition, 1);
         super.loadInt(locationShadowMap, 2);
         super.loadInt(locationNormals, 3);
-
+        super.loadInt(locationRaytracedShadows, 4);
     }
 
 

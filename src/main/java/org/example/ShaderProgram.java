@@ -6,6 +6,7 @@ import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL43;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -21,6 +22,10 @@ public abstract class ShaderProgram {
     private String vertexFile;
     private String fragmentFile;
 
+    private String computeFile;;
+
+    private int computeShaderID;
+
     private static ArrayList<ShaderProgram> shaderPrograms = new ArrayList<>();
 
 
@@ -32,6 +37,12 @@ public abstract class ShaderProgram {
         loadShader();
     }
 
+
+    public ShaderProgram(String computeFile) {
+        this.computeFile = computeFile;
+        shaderPrograms.add(this);
+        loadComputeShader();
+    }
     private static int loadShader(String file, int type) {
         StringBuilder shaderSource = new StringBuilder();
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(file))) {
@@ -62,10 +73,15 @@ public abstract class ShaderProgram {
 
     public void cleanUp() {
         stop();
-        GL20.glDetachShader(programID, vertexShaderID);
-        GL20.glDetachShader(programID, fragmentShaderID);
-        GL20.glDeleteShader(vertexShaderID);
-        GL20.glDeleteShader(fragmentShaderID);
+        if (computeFile == null) {
+            GL20.glDetachShader(programID, vertexShaderID);
+            GL20.glDetachShader(programID, fragmentShaderID);
+            GL20.glDeleteShader(vertexShaderID);
+            GL20.glDeleteShader(fragmentShaderID);
+        } else {
+            GL20.glDetachShader(programID, computeShaderID);
+            GL20.glDeleteShader(computeShaderID);
+        }
         GL20.glDeleteProgram(programID);
     }
 
@@ -137,6 +153,15 @@ public abstract class ShaderProgram {
         getAllUniformLocations();
     }
 
+    private void loadComputeShader() {
+        computeShaderID = loadShader(computeFile, GL43.GL_COMPUTE_SHADER);
+        programID = GL20.glCreateProgram();
+        GL20.glAttachShader(programID, computeShaderID);
+        GL20.glLinkProgram(programID);
+        GL20.glValidateProgram(programID);
+        getAllUniformLocations();
+    }
+
 
     public void init() {
         this.start();
@@ -147,7 +172,11 @@ public abstract class ShaderProgram {
     public static void reloadAllShaders() {
         for (ShaderProgram shader: shaderPrograms) {
             shader.cleanUp();
-            shader.loadShader();
+            if (shader.computeFile != null) {
+                shader.loadComputeShader();
+            } else {
+                shader.loadShader();
+            }
             shader.init();
         }
     }

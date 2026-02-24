@@ -15,9 +15,7 @@ public class ToneMapping extends PostProcessEffect {
     public ToneMapping(float exposure) {
         super(new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
         shader = new ToneMappingShader();
-        shader.start();
-        shader.connectTextureUnits();
-        shader.stop();
+        shader.init();
         this.exposure = exposure;
     }
 

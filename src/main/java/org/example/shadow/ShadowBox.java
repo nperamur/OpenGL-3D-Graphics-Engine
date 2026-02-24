@@ -2,7 +2,7 @@ package org.example.shadow;
 
 
 import org.example.Main;
-import org.example.Player;
+import org.example.player.Player;
 import org.example.Renderer;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
