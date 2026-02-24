@@ -17,6 +17,7 @@ public class Fbo {
     private int texture;
     private int depthId;
 
+
     public static final int NONE = 0;
     public static final int DEPTH_TEXTURE = 1;
     private ArrayList<Fbo> lowResFbos = new ArrayList<>();
@@ -208,6 +209,10 @@ public class Fbo {
 
     protected ArrayList<Fbo> getLowResFbos() {
         return lowResFbos;
+    }
+
+    public void setTexture(int texture) {
+        this.texture = texture;
     }
 
 }

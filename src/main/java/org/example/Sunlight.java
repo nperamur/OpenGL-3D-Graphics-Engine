@@ -161,7 +161,7 @@ public class Sunlight extends Light {
         }
 
 
-        return loader.loadToVao(vertices, texCoords, indices, normals);
+        return loader.loadToVao(vertices, texCoords, indices, normals, "Sun");
     }
 
 

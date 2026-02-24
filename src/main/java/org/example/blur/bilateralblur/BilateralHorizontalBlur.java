@@ -14,6 +14,8 @@ public class BilateralHorizontalBlur extends PostProcessEffect {
 
     private int strength;
 
+    private int texture;
+
 
     public BilateralHorizontalBlur(Gbuffer gbuffer, int strength) {
         super(new Fbo(Main.getDisplayManager().getWidth() / strength, Main.getDisplayManager().getHeight() / strength, Fbo.NONE));
@@ -33,7 +35,7 @@ public class BilateralHorizontalBlur extends PostProcessEffect {
         shader.start();
         shader.loadTargetWidth((float) Main.getDisplayManager().getWidth() / strength);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, super.getFbo().getTexture());
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture == 0 ? super.getFbo().getTexture() : texture);
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, gbuffer.getPositionTexture());
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
@@ -42,6 +44,10 @@ public class BilateralHorizontalBlur extends PostProcessEffect {
         Renderer.renderModel(fullScreenQuad);
 
         shader.stop();
+    }
+
+    public void setTexture(int texture) {
+        this.texture = texture;
     }
 
     @Override

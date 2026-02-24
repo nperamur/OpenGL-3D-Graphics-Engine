@@ -1,9 +1,9 @@
 package org.example.volumetrics;
 
-import org.example.Main;
 import org.example.fbo.Fbo;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
 
@@ -40,15 +40,19 @@ public class VolumetricFrameBuffer extends Fbo {
     private int createTransmittanceTextureAttachment(int width, int height) {
         int texture = GL11.glGenTextures();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_RGB16F, width, height,
-                0, GL11.GL_RGB, GL11.GL_FLOAT, (ByteBuffer) null);
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_R8, width, height,
+                0, GL30.GL_RED, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GL11.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        GL11.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        GL32.glFramebufferTexture(GL30.GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
-                texture, 0);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D,0);
+
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+
+        GL32.glFramebufferTexture(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT1, texture, 0);
+
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         return texture;
     }
 

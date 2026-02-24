@@ -1,11 +1,13 @@
 package org.example;
 
+import org.example.bvh.AABB;
+import org.example.bvh.TriangleBVH;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
-public class Entity {
+public class Entity implements WorldObject {
     private TexturedModel model;
     private Vector3f position;
     private float rotX, rotY, rotZ;
@@ -39,6 +41,36 @@ public class Entity {
 
     public Vector3f getPosition() {
         return position;
+    }
+
+    @Override
+    public TriangleBVH getBVH() {
+        return model.getBVH();
+    }
+
+    @Override
+    public Matrix4f getInverseTransformationMatrix() {
+        return GameMath.createTransformationMatrix(this.getPosition(), this.getRotX(), this.getRotY(), this.getRotZ(), this.getScale()).invert();
+    }
+
+    @Override
+    public boolean hasCollision() {
+        return model.hasCollision();
+    }
+
+    @Override
+    public boolean hasRaytracedShadows() {
+        return model.hasRaytracedShadows();
+    }
+
+    @Override
+    public String getName() {
+        return model.getName();
+    }
+
+    @Override
+    public Matrix4f getTransformationMatrix() {
+        return GameMath.createTransformationMatrix(this.getPosition(), this.getRotX(), this.getRotY(), this.getRotZ(), this.getScale());
     }
 
     public void setPosition(Vector3f position) {
@@ -90,4 +122,12 @@ public class Entity {
         this.rotY = vec.y;
         this.rotZ = vec.z;
     }
+
+    @Override
+    public AABB getAABB() {
+        return model.getAABB();
+    }
+
+
+
 }

@@ -1,8 +1,7 @@
 package org.example.water;
 
-import org.example.GameMath;
 import org.example.Light;
-import org.example.Player;
+import org.example.player.Player;
 import org.example.ShaderProgram;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;

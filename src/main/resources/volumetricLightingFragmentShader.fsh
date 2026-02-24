@@ -1,4 +1,4 @@
-#version 400 core
+#version 430 core
 uniform sampler2D textureSampler;
 uniform sampler2D gNormal;
 uniform sampler2D gPosition;
@@ -79,7 +79,7 @@ vec3 computeFinalSkyColor(vec3 color, vec3 farPoint) {
   float phi = phaseFunction(normalize(lightPosition), rayDir, anisotropy);
   float heightFactor = clamp(1.0 - rayDir.y, 0.0, 1.0);
   float sunHeight = normalize(lightPosition).y;
-  float horizonIntensity = mix(0.2, 2, clamp(1.0 - sunHeight, 0.0, 1.0));
+  float horizonIntensity = mix(0.2, 2, clamp(0.7 - sunHeight, 0.0, 1.0));
   float finalDensity = density * pow(heightFactor, 5 / horizonIntensity);
   float fogTransmittance = exp(-finalDensity * totalDistance);
   vec3 skyWithFog = color * fogTransmittance;
@@ -190,14 +190,12 @@ void main(void) {
                   vec3 shadingOctaveThree = exp(-lightRayDensitySum * vec3(1.0, 1.2, 1.4) * lightStepSize * 0.05);
                   float powderTerm = 1.0 - exp(-lightRayDensitySum * lightStepSize * 2.0);
                   vec3 lightShading = (shadingOctaveOne * phiOctaveOne) * powderTerm + (shadingOctaveTwo * phiOctaveTwo) * 0.5
-                                       + (shadingOctaveThree * phiOctaveThree) * 0.2 + vec3(0.09) * powderTerm;
+                                       + (shadingOctaveThree * phiOctaveThree) * 0.2 + vec3(0.08) * powderTerm;
                   vec3 lightContribution = cloudAlbedo * lightAmount * lightShading;
 
                   //ambient light
                   float ambientTransmittance = exp(-ambientRayDensitySum * lightStepSize);
                   vec3 ambientContribution = (ambientTransmittance + 0.1) * ambientColor * cloudAlbedo;
-                  //accumulation += (lightContribution + ambientContribution) * cloudDensity * cloudStepSize * transmittance;
-                  //transmittance *= exp(-cloudDensity * cloudStepSize);
                   float T = exp(-cloudDensity * cloudStepSize);
                   accumulation += (lightContribution + ambientContribution) * (1.0f - T) * transmittance;
                   transmittance *= T;

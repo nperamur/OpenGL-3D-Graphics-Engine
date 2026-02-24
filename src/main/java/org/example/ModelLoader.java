@@ -75,7 +75,7 @@ public class ModelLoader {
 
 
 
-            return loader.loadToVao(convertToFloatArray(vertices2), convertTexturesToFloatArray(texCoords2), convertToIntArray(indices), convertToFloatArray(normals2));
+            return loader.loadToVao(convertToFloatArray(vertices2), convertTexturesToFloatArray(texCoords2), convertToIntArray(indices), convertToFloatArray(normals2), name);
             //return loader.loadToVaoWithoutTexture(convertToFloatArray(vertices), convertToIntArray(indices));
 
         } catch (FileNotFoundException e) {
