@@ -1,16 +1,18 @@
 package org.example.player;
 
+import org.ejml.simple.SimpleMatrix;
 import org.example.bvh.Triangle;
 import org.example.bvh.TriangleGroup;
-import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
+import org.ojalgo.optimisation.Expression;
+import org.ojalgo.optimisation.ExpressionsBasedModel;
+import org.ojalgo.optimisation.Optimisation;
+import org.ojalgo.optimisation.Variable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class PlayerCapsule {
     private float radius;
@@ -30,8 +32,9 @@ public class PlayerCapsule {
     }
 
     private void setPosition(Vector3f position) {
-        this.base = new Vector3f(new Vector3f(position.x, position.y - 0.5f, position.z));
-        this.tip = new Vector3f(position.x, position.y + CAPSULE_HEIGHT, position.z);
+        Vector3f pos = new Vector3f(position);
+        this.base = new Vector3f(pos.x, pos.y - 0.5f, pos.z);
+        this.tip = new Vector3f(pos.x, pos.y + CAPSULE_HEIGHT, pos.z);
         this.axis = new Vector3f(tip).sub(base);
         this.axis.normalize();
     }
@@ -47,6 +50,7 @@ public class PlayerCapsule {
 
 
     private boolean isColliding(Triangle triangle, Matrix4f transformationMatrix) {
+        transformationMatrix = new Matrix4f(transformationMatrix);
         Vector3f[] points = triangle.getPoints();
         Vector3f p0 = transformationMatrix.transformPosition(new Vector3f(points[0]));
         Vector3f p1 = transformationMatrix.transformPosition(new Vector3f(points[1]));
@@ -55,7 +59,6 @@ public class PlayerCapsule {
         Vector3f e0 = new Vector3f(p1).sub(p0);
         Vector3f e1 = new Vector3f(p2).sub(p0);
         Vector3f normal = new Vector3f(e0).cross(e1).normalize();
-        orientNormal(normal, p0);
         Vector3f rayCastedPos;
         Vector3f centroid = new Vector3f(p0).add(p1).add(p2).div(3.0f);
 
@@ -78,9 +81,9 @@ public class PlayerCapsule {
             Vector3f n3 = new Vector3f(edge3).cross(normal);
             n3.normalize();
 
-            Vector3f intersect1 = rayCast(startingPoint, p0, axis, n1);
-            Vector3f intersect2 = rayCast(startingPoint, p1, axis, n2);
-            Vector3f intersect3 = rayCast(startingPoint, p2, axis, n3);
+            Vector3f intersect1 = getRayCastedPos(startingPoint, p0, axis, n1);
+            Vector3f intersect2 = getRayCastedPos(startingPoint, p1, axis, n2);
+            Vector3f intersect3 = getRayCastedPos(startingPoint, p2, axis, n3);
 
 
             float intersectProj1 = new Vector3f(intersect1).dot(axis);
@@ -109,7 +112,7 @@ public class PlayerCapsule {
                     capsuleInterval.y >= triangleInterval.x;
 
         } else {
-            rayCastedPos = rayCast(centroid, base, axis, normal);
+            rayCastedPos = getRayCastedPos(centroid, base, axis, normal);
             closestTrianglePoint = getClosestPoint(triangle, p0, p1, p2, rayCastedPos, transformationMatrix);
         }
 
@@ -144,25 +147,54 @@ public class PlayerCapsule {
 //        return collision;
 //    }
 
-    public boolean resolveCollisions(ArrayList<TriangleGroup> triangleGroups, Vector3f position, int numIterations) {
+    public boolean resolveCollisions(ArrayList<TriangleGroup> triangleGroups, Vector3f position, Vector3f movementVector, int numIterations) {
         this.setPosition(position);
         ArrayList<TriangleMapping> triangles = new ArrayList<TriangleMapping>();
         for (TriangleGroup group : triangleGroups) {
             Matrix4f transformation = group.getTransformationMatrix();
             for (Triangle triangle : group.getTriangles()) {
-                triangles.add(new TriangleMapping(triangle, transformation));
+                Vector3f p0 = transformation.transformPosition(new Vector3f(triangle.getPoints()[0]));
+                Vector3f p1 = transformation.transformPosition(new Vector3f(triangle.getPoints()[1]));
+                Vector3f p2 = transformation.transformPosition(new Vector3f(triangle.getPoints()[2]));
+
+                Vector3f normal = new Vector3f(new Vector3f(p1).sub(p0)).cross(new Vector3f(p2).sub(p0)).normalize();
+                orientNormal(normal, p0);
+                triangles.add(new TriangleMapping(triangle, transformation, normal));
             }
         }
         boolean collision = false;
-
         for (int i = 0; i < numIterations; i++) {
+            ArrayList<TrianglePlane> constraints = new ArrayList<>();
             for (TriangleMapping mapping : triangles) {
                 Triangle triangle = mapping.triangle();
                 Matrix4f transformation = mapping.transformation();
                 if (isColliding(triangle, transformation)) {
-                    recorrectPosition(position, triangle, transformation, numIterations);
+                    recorrectPosition(position, movementVector, triangle, transformation, numIterations, mapping.normal());
                     this.setPosition(position);
                     collision = true;
+                    Vector3f p0 = transformation.transformPosition(new Vector3f(triangle.getPoints()[0]));
+                    Vector3f p1 = transformation.transformPosition(new Vector3f(triangle.getPoints()[1]));
+                    Vector3f p2 = transformation.transformPosition(new Vector3f(triangle.getPoints()[2]));
+                    Vector3f normal = new Vector3f(new Vector3f(p1).sub(p0)).cross(new Vector3f(p2).sub(p0)).normalize();
+                    orientNormal(normal, p1);
+                    TrianglePlane plane = new TrianglePlane(normal, p0, p1, p2);
+                    Vector3f tangent = new Vector3f(p1).sub(p0).normalize();
+                    Vector3f bitangent = new Vector3f(normal).cross(tangent).normalize();
+                    Matrix4f tbn = new Matrix4f(
+                            new Vector4f(tangent, 0),
+                            new Vector4f(bitangent, 0),
+                            new Vector4f(normal, 0),
+                            new Vector4f(0, 0, 0, 1)
+                    );
+                    try {
+//                        Vector3f offset = getTangentialOffset(constraints, plane, tbn, false);
+//                        System.out.println(offset);
+//                        position.add(offset);
+//                        this.setPosition(position);
+                    } catch (RuntimeException e) {
+                        e.printStackTrace();
+                    }
+                    constraints.add(plane);
                 }
             }
         }
@@ -174,43 +206,43 @@ public class PlayerCapsule {
 
     //Note: Takes in direct mutable reference to player's position and modifies it
     //returns penetration depth
-    private float recorrectPosition(Vector3f position, Triangle triangle, Matrix4f transformationMatrix, int numIterations) {
+    //something weird is happening here
+    private float recorrectPosition(Vector3f position, Vector3f movementVector, Triangle triangle, Matrix4f transformationMatrix, int numIterations, Vector3f normal) {
         Vector3f[] points = triangle.getPoints();
+        transformationMatrix = new Matrix4f(transformationMatrix);
         Vector3f p0 = transformationMatrix.transformPosition(new Vector3f(points[0]));
         Vector3f p1 = transformationMatrix.transformPosition(new Vector3f(points[1]));
         Vector3f p2 = transformationMatrix.transformPosition(new Vector3f(points[2]));
 
-        Vector3f e0 = new Vector3f(p1).sub(p0);
-        Vector3f e1 = new Vector3f(p2).sub(p0);
-        Vector3f normal = new Vector3f(e0).cross(e1).normalize();
-        orientNormal(normal, p0);
 
         Vector3f rayCastedPos;
         Vector3f centroid = new Vector3f(p0).add(p1).add(p2).div(3.0f);
 
+        float vectorDiff = new Vector3f(movementVector).dot(normal) / numIterations;
+        if (vectorDiff < 0.01f) {
+            movementVector.sub(new Vector3f(normal).mul(vectorDiff));
+        }
         Vector3f closestTrianglePoint;
         if (isPerpendicular(axis, normal) && !(Math.abs(normal.y) > 0.7f)) {
             Vector3f startingPoint = calculateClosestSegmentStartFromSegment(p0, p1, p2, axis, base, normal);
             float normalProj = new Vector3f(startingPoint).dot(normal);
             float axisNormalProj = new Vector3f(base).dot(normal);
-            float penetrationDepth = radius - Math.abs(normalProj - axisNormalProj) + 0.0001f;
-            if (Float.isNaN(normal.lengthSquared())) return -1;
-            position.add(new Vector3f(normal).mul(penetrationDepth / numIterations));
+            float penetrationDepth =  Math.abs(normalProj - axisNormalProj) + 0.0001f;
+            if (Float.isNaN(normal.lengthSquared()) || penetrationDepth < 0) return -1;
+            position.add(new Vector3f(normal).mul((radius - penetrationDepth) / numIterations));
             return penetrationDepth;
         } else {
-            rayCastedPos = rayCast(centroid, base, axis, normal);
+            rayCastedPos = getRayCastedPos(centroid, base, axis, normal);
             closestTrianglePoint = getClosestPoint(triangle, p0, p1, p2, rayCastedPos, transformationMatrix);
-
         }
-
         Vector3f referencePoint;
         referencePoint = calculateClosestSegment(closestTrianglePoint,
                 new Vector3f(base.x, base.y + radius, base.z),
                 new Vector3f(tip.x, tip.y - radius, tip.z));
         float penetrationDepth = closestTrianglePoint.distance(referencePoint);
         Vector3f penetrationNormal = new Vector3f(referencePoint).sub(closestTrianglePoint).normalize();
-        if (Float.isNaN(penetrationNormal.lengthSquared())) return -1;
-        position.add(penetrationNormal.mul(Math.max((radius - penetrationDepth + 0.01f) / numIterations, 0)));
+        if (Float.isNaN(penetrationNormal.lengthSquared()) || penetrationDepth < 0) return -1;
+        position.add(new Vector3f(penetrationNormal).mul(Math.max((radius - penetrationDepth) / numIterations, 0)));
         return penetrationDepth;
     }
 
@@ -225,6 +257,166 @@ public class PlayerCapsule {
         }
     }
 
+    //Gets the slide that we need in order to move our capsule out of the way of other triangles.
+    //Must be done right after triangle penetration resolution.
+    private Vector3f getTangentialOffset(ArrayList<TrianglePlane> constraints, TrianglePlane refPlane, Matrix4f tbn, boolean vertical) {
+        SimpleMatrix m = new SimpleMatrix(constraints.size() + 3, 2);
+        SimpleMatrix b = new SimpleMatrix(constraints.size() + 3, 1);
+        float hMin = this.tip.y - this.base.y;
+        Vector3f p1 = new Vector3f(refPlane.p1()).mulDirection(tbn);
+        Vector2f v1 = new Vector2f(p1.x, p1.y);
+
+        Vector3f p2 = new Vector3f(refPlane.p2()).mulDirection(tbn);
+        Vector2f v2 = new Vector2f(p2.x, p2.y);
+
+        Vector3f p3 = new Vector3f(refPlane.p3()).mulDirection(tbn);
+        Vector2f v3 = new Vector2f(p3.x, p3.y);
+        Vector3f tBase = new Vector3f(base).mulDirection(tbn);
+
+
+        for (int i = 0; i < constraints.size(); i++) {
+            //height function
+
+            //TODO: ENCODE CONSTRAINTS
+
+            //Radius Constraint Encoding:
+            //if (constraints.get(i).normal().dot(refPlane.normal()) > 0) continue;
+
+            //TODO: replace with -dh/db, dh/da... using normals gives second derivative not first use two points instead
+            Vector3f nC = constraints.get(i).normal();
+            Vector3f nF = refPlane.normal();
+
+            float dx = -nC.x / nC.y + nF.x / nF.y;
+            float dz = -nC.z / nC.y + nF.z / nF.y;
+
+            Vector3f T = new Vector3f();
+            tbn.getRow(0, T);
+            Vector3f B = new Vector3f();
+            tbn.getRow(1, B);
+
+            float gradT = dx * T.x + dz * T.z;
+            float gradB = dx * B.x + dz * B.z;
+
+            m.set(i, 0, gradT);
+            m.set(i, 1, gradB);
+
+            float yCeiling = constraints.get(i).p1().y
+                    - (nC.x * (base.x - constraints.get(i).p1().x)
+                    +  nC.z * (base.z - constraints.get(i).p1().z)) / nC.y;
+
+            float yFloor = refPlane.p1().y
+                    - (nF.x * (base.x - refPlane.p1().x)
+                    +  nF.z * (base.z - refPlane.p1().z)) / nF.y;
+
+            float currentGap = yCeiling - yFloor;
+            float error = hMin - currentGap;
+
+            float Ty = T.y;
+            float By = B.y;
+
+            float scale = Ty * Ty + By * By;
+            if (scale > 1e-6f) {
+//                float offsetT = error * Ty / scale;
+//                float offsetB = error * By / scale;
+                b.set(i, 0, error);
+            } else {
+                b.set(i, 0, 0);
+            }
+
+
+            //TODO: Handle Degenerate Cases
+            //1. Parallel Lines: Skip those ones
+            //2. Corners/Vertical ref plane:Rather than height function do the same thing except with width function
+            //3. Zero b vector: return that immediately more of a optimization than a case to handle
+            //4. NaNs and stuff from invert. return zero vector.
+        }
+
+        //Triangle Boundaries Encoding:
+        //Here we will encode the triangle bounds into our matrices in order to make them constraints
+        //edge1
+        Vector3f centroid3D = new Vector3f(refPlane.p1()).add(refPlane.p2()).add(refPlane.p3()).div(3).mulDirection(tbn);
+        Vector2f centroid = new Vector2f(centroid3D.x, centroid3D.y);
+        Vector3f edge1 = new Vector3f(refPlane.p1()).sub(refPlane.p3());
+        edge1.mulDirection(tbn);
+        edge1.normalize();
+        Vector2f edgeNormal = new Vector2f(-edge1.y, edge1.x);
+        if (edgeNormal.dot(new Vector2f(centroid).sub(v1)) < 0) {
+            edgeNormal.negate();
+        }
+        m.set(constraints.size(),0, edgeNormal.x);
+        m.set(constraints.size(), 1, edgeNormal.y);
+        b.set(constraints.size(), 0, edgeNormal.dot(v1) - edgeNormal.dot(new Vector2f(tBase.x, tBase.y)));
+        //edge2
+        Vector3f edge2 = new Vector3f(refPlane.p1()).sub(refPlane.p2());
+        edge2.mulDirection(tbn);
+        edge2.normalize();
+        edgeNormal = new Vector2f(-edge2.y, edge2.x);
+        if (edgeNormal.dot(new Vector2f(centroid).sub(v2)) < 0) {
+            edgeNormal.negate();
+        }
+        m.set(constraints.size() + 1,0, edgeNormal.x);
+        m.set(constraints.size() + 1, 1, edgeNormal.y);
+        b.set(constraints.size() + 1, 0, edgeNormal.dot(v2) - edgeNormal.dot(new Vector2f(tBase.x, tBase.y)));
+        //edge3
+        Vector3f edge3 = new Vector3f(refPlane.p2()).sub(refPlane.p3());
+        edge3.mulDirection(tbn);
+        edge3.normalize();
+        edgeNormal = new Vector2f(-edge3.y, edge3.x);
+        if (edgeNormal.dot(new Vector2f(centroid).sub(v3)) < 0) {
+            edgeNormal.negate();
+        }
+        m.set(constraints.size() + 2,0, edgeNormal.x);
+        m.set(constraints.size() + 2, 1, edgeNormal.y);
+        b.set(constraints.size() + 2, 0, edgeNormal.dot(v3) - edgeNormal.dot(new Vector2f(tBase.x, tBase.y)));
+
+
+
+//        SimpleMatrix t = m.transpose()
+//                .mult(m)
+//                .invert()
+//                .mult(m.transpose())
+//                .mult(b);
+//        float x = (float) t.get(0, 0);
+//        float z = (float) t.get(1, 0);
+//        Vector3f T = new Vector3f();
+//        tbn.getRow(0, T);
+//        Vector3f B = new Vector3f();
+//        tbn.getRow(1, B);
+//        Vector3f result = new Vector3f(T).mul(x).add(new Vector3f(B).mul(z));
+
+
+        ExpressionsBasedModel model = new ExpressionsBasedModel();
+
+        Variable xVar = model.addVariable("x");
+        Variable zVar = model.addVariable("z");
+        Expression obj = model.addExpression("obj").weight(1);
+        obj.set(xVar, xVar, 0.5f);
+        obj.set(zVar, zVar, 0.5f);
+
+        for (int i = 0; i < m.getNumRows(); i++) {
+            double bVal = b.get(i, 0);
+            if (Double.isInfinite(bVal) || Double.isNaN(bVal)) continue;
+            Expression e = model.addExpression("c" + i).lower(b.get(i, 0));
+
+            e.set(xVar, m.get(i, 0));
+            e.set(zVar, m.get(i, 1));
+        }
+
+        Optimisation.Result r = model.minimise();
+        if (r.getState().isFeasible()) {
+            double solX = r.get(0).doubleValue();
+            double solZ = r.get(1).doubleValue();
+            Vector3f T = new Vector3f();
+            tbn.getRow(0, T);
+            Vector3f B = new Vector3f();
+            tbn.getRow(1, B);
+            Vector3f result = new Vector3f(T).mul((float)solX).add(new Vector3f(B).mul((float)solZ));
+            return result;
+        } else {
+            return new Vector3f(0, 0, 0);
+        }
+
+    }
 
 
     private boolean inCapsule(Vector3f position) {
@@ -290,12 +482,17 @@ public class PlayerCapsule {
 
 
 
-    private Vector3f rayCast(Vector3f p0, Vector3f position, Vector3f direction, Vector3f normal) {
-        float t = new Vector3f(p0).sub(position).dot(normal) / direction.dot(normal);
-
-        Vector3f rayCastedPos = new Vector3f(position).add(new Vector3f(direction).mul(t));
+    private Vector3f getRayCastedPos(Vector3f finalPos, Vector3f origin, Vector3f direction, Vector3f normal) {
+        float t = rayCast(finalPos, origin, direction, normal);
+        Vector3f rayCastedPos = new Vector3f(origin).add(new Vector3f(direction).mul(t));
         return rayCastedPos;
     }
+
+    private float rayCast(Vector3f finalPos, Vector3f origin, Vector3f direction, Vector3f normal) {
+        return new Vector3f(finalPos).sub(origin).dot(normal) / direction.dot(normal);
+    }
+
+
 
 
     //Handles Parallel case... yeah
@@ -346,9 +543,74 @@ public class PlayerCapsule {
         };
         return result;
     }
-
     //Step 4: Do check whether the axis starting at the point is within the radius of the cylinder. If it's not, autoreject.
     //Step 5: Finally, clamp to triangle bounds and see if the segment ANYWHERE will align with the bounds of the cylinder. ie. get shared interval
+
+
+
+
+
+
+    //Returns the first time of impact.
+    public CollisionHit sweepCapsule(ArrayList<TriangleGroup> triangleGroups, Vector3f movementVector, Vector3f position) {
+        this.setPosition(position);
+        CollisionHit nearestHit = null;
+        for (TriangleGroup group : triangleGroups) {
+            Matrix4f transform = group.getTransformationMatrix();
+            Matrix4f inverseTransform = new Matrix4f(transform).invert();
+            for (Triangle triangle : group.getTriangles()) {
+                if (!isColliding(triangle, transform)) {
+                    CollisionHit hit = sweepCapsule(triangle, movementVector, transform, inverseTransform);
+                    if (hit == null) continue;
+                    float t = hit.t();
+                    if (nearestHit == null && t != -1 || nearestHit != null && t < nearestHit.t() && t != -1) {
+                        nearestHit = hit;
+                    }
+                }
+            }
+        }
+        if (nearestHit == null) {
+            nearestHit = new CollisionHit(movementVector.length(), new Vector3f(0, 0, 0));
+        }
+        float finalT = Math.clamp(nearestHit.t(), 0, movementVector.length());
+        if (Float.isNaN(nearestHit.t())) {
+            finalT = 0;
+        }
+        return new CollisionHit(finalT, nearestHit.normal());
+
+
+    }
+
+
+    private CollisionHit sweepCapsule(Triangle triangle, Vector3f movementVector, Matrix4f transformationMatrix, Matrix4f inverseTransform) {
+        Vector3f p0 = transformationMatrix.transformPosition(new Vector3f(triangle.getPoints()[0]));
+        Vector3f p1 = transformationMatrix.transformPosition(new Vector3f(triangle.getPoints()[1]));
+        Vector3f p2 = transformationMatrix.transformPosition(new Vector3f(triangle.getPoints()[2]));
+        Vector3f[] points = new Vector3f[] {p0, p1, p2};
+
+        Vector3f e0 = new Vector3f(points[1]).sub(points[0]);
+        Vector3f e1 = new Vector3f(points[2]).sub(points[1]);
+        Vector3f normal = new Vector3f(e0).cross(e1).normalize();
+        orientNormal(normal, p0);
+
+
+        Vector3f centroid = new Vector3f(points[0]).add(points[1]).add(points[2]).div(3.0f);
+
+        Vector3f rayCastedPos = getRayCastedPos(centroid, base, axis, normal);
+        Vector3f closestTrianglePoint = getClosestPoint(triangle, points[0], points[1], points[2], rayCastedPos, transformationMatrix);
+        Vector3f referencePoint = calculateClosestSegment(closestTrianglePoint,
+                new Vector3f(base.x, base.y, base.z),
+                new Vector3f(tip.x, tip.y, tip.z));
+        Vector3f rayDir = new Vector3f(movementVector).normalize();
+        float t = rayCast(referencePoint, points[0].sub(new Vector3f(normal).mul(radius)), rayDir, normal);
+        Matrix4f invMatrix = new Matrix4f(transformationMatrix).invert();
+        Vector3f modelPos = invMatrix.transformPosition(new Vector3f(referencePoint).add(new Vector3f(movementVector).mul(t)));
+        if (triangle.isOnExtrudedTriangle(modelPos, radius)) {
+            return new CollisionHit(t, normal);
+        }
+        return null;
+
+    }
 
 
 

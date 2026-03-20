@@ -7,6 +7,7 @@ uniform int modelBVHLength;
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform mat4 inverseViewMatrix;
+uniform int frameCount;
 
 layout(rgba16f, binding = 4) uniform image2D outputImage;
 
@@ -36,7 +37,7 @@ bool hitsTriangle(vec3 p1, vec3 p2, vec3 p3, vec3 rayDir, vec3 rayOrigin) {
     float v = f * dot(rayDir, q);
     if (v < 0.0 || u + v > 1.0) return false;
     float t = f * dot(e2, q);
-    return t > 0.01;
+    return t > 0.001;
 }
 
 //Step 1: raycast towards aabb min and max in direction to perpendicular plane to ray dir.
@@ -81,7 +82,7 @@ bool raytrace(vec3 rayDir, vec3 shadowOrigin) {
       float tFar = min(min(tMax.x, tMax.y), tMax.z);
       bool isLeaf = modelBVHData[modelBVHCurrIndex + 6] > 0.5 ? true : false;
 
-      if (tNear > tFar || tFar < 0.01 || any(isnan(tMin)) || any(isnan(tMax))) {
+      if (tNear > tFar || tFar < 0.001 || any(isnan(tMin)) || any(isnan(tMax))) {
          int nextIdx = int(modelBVHData[modelBVHCurrIndex + 7] + 0.5) * 10;
          modelBVHCurrIndex = nextIdx;
          continue;
@@ -126,21 +127,21 @@ bool raytrace(vec3 rayDir, vec3 shadowOrigin) {
       float tFar = min(min(tMax.x, tMax.y), tMax.z);
       bool isLeaf = triangleBVHData[triangleBVHCurrIndex + 6] > 0.5 ? true : false;
 
-      if (tNear > tFar || tFar < 0.01 || any(isnan(tMin)) || any(isnan(tMax))) {
+      if (tNear > tFar || tFar < 0.001 || any(isnan(tMin)) || any(isnan(tMax))) {
          int nextIdx = int(triangleBVHData[triangleBVHCurrIndex + 7] + 0.5) * 10;
          triangleBVHCurrIndex = nextIdx;
          continue;
       }
 
-      if (isLeaf && int(triangleBVHData[triangleBVHCurrIndex + 8]) > -0.01) {
+      if (isLeaf && int(triangleBVHData[triangleBVHCurrIndex + 8]) > -0.001) {
         bufferIndex++;
         numTestTriangles = int(triangleBVHData[triangleBVHCurrIndex + 8] + 0.5);
         triangleCurrIndex = int(triangleBVHData[triangleBVHCurrIndex + 9] + 0.5) * 9;
         triangleBVHSkipPointer = int(triangleBVHData[triangleBVHCurrIndex + 7] + 0.5) * 10;
         continue;
       } else if (isLeaf) {
-        int nextIdx = int(modelBVHData[modelBVHCurrIndex + 7] + 0.5) * 10;
-        modelBVHCurrIndex = nextIdx;
+        int nextIdx = int(triangleBVHData[triangleBVHCurrIndex + 7] + 0.5) * 10;
+        triangleBVHCurrIndex = nextIdx;
         continue;
       }
       triangleBVHCurrIndex += 10;
@@ -189,9 +190,11 @@ float hashToFloat(uint x)
 
 
 void main(void) {
-
-
   ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+  int checker = (pixel.x + pixel.y) & 1;
+  //if (checker != (frameCount & 1)) {
+  //    return;
+  //}
   ivec2 size = imageSize(outputImage);
   vec2 uv = vec2(pixel) / vec2(size);
 
@@ -201,21 +204,45 @@ void main(void) {
       return;
   }
   vec3 worldPos = (inverseViewMatrix * viewPos).xyz;
-  vec3 rayDir = normalize(vec3(lightPosition.x, max(lightPosition.y, 5000.0), lightPosition.z));
 
-  rayDir.x = (abs(rayDir.x) < 0.2) ? sign(rayDir.x) * 0.2 : rayDir.x;
-  rayDir.z = (abs(rayDir.z) < 0.2) ? sign(rayDir.z) * 0.2 : rayDir.z;
-
-
-  vec3 shadowOrigin = worldPos + (rayDir * 0.1);
-
-
+  vec3 sunDir = normalize(vec3(lightPosition.x, max(lightPosition.y, 5000.0), lightPosition.z));
+  vec3 up = abs(sunDir.y) < 0.99 ? vec3(0, 1, 0) : vec3(1, 0, 0);
+  vec3 tangent = normalize(cross(up, sunDir));
+  vec3 bitangent = cross(sunDir, tangent);
 
   uint seed = uint(pixel.x)
             + uint(pixel.y) * uint(size.x)
-            + 16777619u;
+            + uint(frameCount) * 16777619u;
 
-  float rand = hashToFloat(seed);
+  float r1 = hashToFloat(seed);
+  float r2 = hashToFloat(seed ^ 2891336453u);
+
+  float coneAngle = 0.0065;
+  float r = coneAngle * sqrt(r1);
+  float theta = 6.28318 * r2;
+
+  vec3 rayDir = normalize(sunDir
+      + tangent * r * cos(theta)
+      + bitangent * r * sin(theta));
+
+  vec4 viewNormal = textureLod(gNormal, uv, 0.0);
+  vec3 worldNormal = normalize(mat3(inverseViewMatrix) * viewNormal.xyz);
+
+  float NdotL = max(dot(worldNormal, rayDir), 0.0);
+  //if (NdotL <= -0.05) {
+    //  imageStore(outputImage, pixel, vec4(0.0, 0.0, 0.0, 1.0));
+      //return;
+  //}
+  float r3 = hashToFloat(seed ^ 1234567891u);
+  float r4 = hashToFloat(seed ^ 987654321u);
+
+  vec3 shadowOrigin = worldPos
+      + rayDir * 0.08
+      + tangent * (r3 - 0.5) * 0.02
+      + bitangent * (r4 - 0.5) * 0.02;
+
+
+
   bool hasHit = raytrace(rayDir, shadowOrigin);
 
 

@@ -106,6 +106,7 @@ public class VolumetricLighting extends PostProcessEffect {
     public void cleanUp() {
         super.cleanUp();
         shader.cleanUp();
+        GL11.glDeleteTextures(cloudNoiseTexture);
     }
 
     public void setVolumetricParams(Vector3f lightColor, float stepSize, float fogAnisotropy, float fogDensity, float albedo) {

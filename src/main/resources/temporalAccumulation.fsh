@@ -26,7 +26,7 @@ void main(void) {
     vec4 origPos = texture(currPosition, pass_textureCoords);
     vec4 reprojectedWorldPos;
     if (origPos.a != 0) {
-      weight = 0.2f;
+      weight = 0.1f;
       currPos = vec4(origPos.xyz, 1.0);
       reprojectedWorldPos = inverseViewMatrix * currPos;
     } else {
@@ -68,7 +68,7 @@ void main(void) {
 
     float depthCurr = origPos.z;
     float depthPrev = prevPos.z;
-    bool badHistory = (origPos.a == 0 && prevPos.a > 0 || origPos.a > 0 && prevPos.a == 0 || abs(depthCurr - depthPrev) > 10);
+    bool badHistory = (origPos.a == 0 && prevPos.a > 0 || origPos.a > 0 && prevPos.a == 0 || abs(depthCurr - depthPrev) > 1);
 
     float discardFactor = float(isOffScreen || badHistory);
 

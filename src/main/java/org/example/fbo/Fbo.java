@@ -195,7 +195,7 @@ public class Fbo {
         return lowResFbos.get(index).texture;
     }
 
-    public void cleanUp() {//call when closing the game
+    public void cleanUp() {
         for (Fbo lowResFbo : lowResFbos) {
             lowResFbo.cleanUp();
         }

@@ -86,6 +86,35 @@ public class Triangle {
         return (test0 && test1 && test2) || (!test0 && !test1 && !test2);
     }
 
+    public boolean isOnExtrudedTriangle(Vector3f position, float extrudeRadius) {
+        Vector3f normal = new Vector3f(edges[0]).cross(edges[1]).normalize();
+
+        Vector3f edge0 = new Vector3f(points[1]).sub(points[0]);
+        Vector3f edge1 = new Vector3f(points[2]).sub(points[1]);
+        Vector3f edge2 = new Vector3f(points[0]).sub(points[2]);
+
+        boolean test0 = computeLR(edge0, points[0], position, normal);
+        boolean test1 = computeLR(edge1, points[1], position, normal);
+        boolean test2 = computeLR(edge2, points[2], position, normal);
+
+        float dist0 = distanceToEdge(edge0, points[0], position);
+        float dist1 = distanceToEdge(edge1, points[1], position);
+        float dist2 = distanceToEdge(edge2, points[2], position);
+
+        boolean insideExtruded = ((test0 && test1 && test2) || (!test0 && !test1 && !test2))
+                || (dist0 <= extrudeRadius && dist1 <= extrudeRadius && dist2 <= extrudeRadius);
+
+        return insideExtruded;
+    }
+
+
+    private float distanceToEdge(Vector3f edge, Vector3f edgeStart, Vector3f point) {
+        Vector3f pointToStart = new Vector3f(point).sub(edgeStart);
+        Vector3f edgeDir = new Vector3f(edge).normalize();
+        Vector3f proj = new Vector3f(edgeDir).mul(pointToStart.dot(edgeDir));
+        return new Vector3f(pointToStart).sub(proj).length();
+    }
+
     private boolean computeLR(Vector3f edge, Vector3f edgeStart, Vector3f position, Vector3f normal) {
         Vector3f pointVector = new Vector3f(position).sub(edgeStart);
         return new Vector3f(edge).cross(pointVector).dot(normal) > 0;

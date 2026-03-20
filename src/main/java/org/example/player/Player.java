@@ -1,12 +1,8 @@
 package org.example.player;
 
-import org.example.Item;
-import org.example.Main;
-import org.example.Renderer;
-import org.example.ShaderProgram;
+import org.example.*;
 import org.example.bvh.*;
 import org.example.terrain.Terrain;
-import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
@@ -14,7 +10,9 @@ import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
 public class Player {
-    private Vector3f position = new Vector3f(0, 0, 0);
+    private Vector3f position = new Vector3f(0, 100, 0);
+
+    private Vector3f finalPosition = new Vector3f(0, 100, 0);
     private double pitch;
     private double yaw;
     private double roll;
@@ -23,6 +21,8 @@ public class Player {
     private double prevY;
     private boolean locked;
     private double jumpStartTime = 0;
+    private double physicsTime;
+    private double prevTime;
     private boolean isJumping;
     private float jumpHeight;
     private float fallHeight;
@@ -35,6 +35,11 @@ public class Player {
     private double fallStartTime;
     private Item heldItem;
 
+    private boolean isMoving;
+
+
+    private float yOffset;
+
 
     private Vector3f prevFramePos = new Vector3f();
 
@@ -46,7 +51,7 @@ public class Player {
         this.yaw = yaw;
         this.roll = roll;
         this.window = window;
-        this.playerCapsule = new PlayerCapsule(1.5f, this.position);
+        this.playerCapsule = new PlayerCapsule(1.5f, new Vector3f(this.position));
         GLFW.glfwSetCursorPosCallback(window, (n, xpos, ypos) -> {
             if (locked) {
                 this.yaw += (xpos - prevX) * 0.1;
@@ -62,48 +67,11 @@ public class Player {
     }
 
     public void move(Terrain terrain) {
-        float heightOfTerrain = terrain.getHeightOfTerrainNotInterpolated(this.position.x, this.position.z);
-        currentHeightOfTerrain = heightOfTerrain;
-        if (isJumping || position.y <= heightOfTerrain) {
-            fallStartTime = -1;
-        }
-        if (position.y < heightOfTerrain) {
-            isJumping = false;
-            position.y = heightOfTerrain;
-        }
-
-
-        prevFramePos = new Vector3f(position);
-        if (isJumping) {
-            double t = System.nanoTime() - jumpStartTime;
-            t /= 200000000;
-            this.position.y = (float) (((double) -1 / 2 * GRAVITY * Math.pow(t, 2) + t * 1.7f) + jumpHeight);
-        } else if (position.y > heightOfTerrain && !isCollided) {
-            if (fallStartTime == -1) {
-                fallStartTime = 0;
-                fallHeight = position.y;
-            }
-            this.position.y = Math.max(heightOfTerrain, (float) (-GRAVITY * Math.pow(fallStartTime, 2) * 13) + fallHeight);
-            fallStartTime += Main.getDisplayManager().getFrameTimeInSeconds();
-        }
-        handleInputs();
-        CompletableFuture.supplyAsync(() -> {
-            WorldObjectData worldObjectData = Main.getDisplayManager().getRenderer().getWorldObjectData();
-            ArrayList<TriangleGroup> triangleGroups = worldObjectData.rayCastNearbyTrianglesWithCollisionsEnabled(position, new Vector3f(position).sub(prevFramePos));
-            return playerCapsule.resolveCollisions(triangleGroups, position, 100);
-        }).thenAccept(collided -> {
-            if (!isCollided && collided) {
-                fallStartTime = -1;
-                isJumping = false;
-                isCollided = true;
-            } else {
-                isCollided = false;
-            }
-        });
+        handleInputs(terrain, 20);
     }
 
     public Vector3f getPosition() {
-        return position;
+        return new Vector3f(finalPosition);
     }
 
     public double getPitch() {
@@ -127,58 +95,149 @@ public class Player {
             return;
         }
         jumpStartTime = System.nanoTime();
-        if (!isCollided) {
-            jumpHeight = currentHeightOfTerrain;
-        } else {
-            jumpHeight = position.y;
-        }
+//        if (!isCollided) {
+//            jumpHeight = currentHeightOfTerrain;
+//        } else {
+//            jumpHeight = position.y;
+//        }
+        jumpHeight = position.y;
         this.isJumping = true;
     }
 
-    private void handleInputs() {
-        double frameTime = Main.getDisplayManager().getFrameTimeInSeconds();
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) {
-            position.z -= (float) (movementSpeed * Math.cos(Math.toRadians(yaw)) * frameTime);
-            position.x += (float) (movementSpeed * Math.sin(Math.toRadians(yaw)) * frameTime);
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS) {
-            position.z -= (float) (movementSpeed * Math.cos(Math.toRadians(yaw + 90)) * frameTime);
-            position.x += (float) (movementSpeed * Math.sin(Math.toRadians(yaw + 90)) * frameTime);
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS) {
-            position.z += (float) (movementSpeed * Math.cos(Math.toRadians(yaw + 90)) * frameTime);
-            position.x -= (float) (movementSpeed * Math.sin(Math.toRadians(yaw + 90)) * frameTime);
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS) {
-            position.z += (float) (movementSpeed * Math.cos(Math.toRadians(yaw)) * frameTime);
-            position.x -= (float) (movementSpeed * Math.sin(Math.toRadians(yaw)) * frameTime);
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS) {
-            yaw -= 200f * frameTime;
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT) == GLFW.GLFW_PRESS) {
-            yaw += 200f * frameTime;
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS && Math.toRadians(pitch) >= -Math.PI / 2) {
-            pitch -= 200f * frameTime;
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS && Math.toRadians(pitch) <= Math.PI / 2) {
-            pitch += 200f * frameTime;
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ENTER) == GLFW.GLFW_PRESS) {
-            GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
-            locked = true;
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_PRESS) {
-            GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
-            locked = false;
-        } if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS && !isJumping) {
-            jump();
-        }
+    private void handleInputs(Terrain terrain, float numIterations) {
+        if (!isMoving) {
+            isMoving = true;
+            boolean wPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS;
+            boolean dPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS;
+            boolean aPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS;
+            boolean sPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS;
+            boolean leftPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS;
+            boolean rightPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT) == GLFW.GLFW_PRESS;
+            boolean upArrowPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS && Math.toRadians(pitch) >= -Math.PI / 2;
+            boolean downArrowPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS && Math.toRadians(pitch) <= Math.PI / 2;
+            boolean enterPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ENTER) == GLFW.GLFW_PRESS;
+            boolean escapePressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_PRESS;
+            boolean spacePressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS;
+            boolean jPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_J) == GLFW.GLFW_PRESS;
+            boolean leftShiftPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
+            boolean leftControlPressed = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
 
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_J) == GLFW.GLFW_PRESS) {
-            ShaderProgram.reloadAllShaders();
-        }
+            if (enterPressed) {
+                GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
+                locked = true;
+            }
+            if (escapePressed) {
+                GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
+                locked = false;
+            }
+            if (prevTime == 0) {
+                prevTime = System.nanoTime();
+            }
+            if (jPressed) {
+                ShaderProgram.reloadAllShaders();
+            }
+            CompletableFuture.supplyAsync(() -> {
+                long now = System.nanoTime();
+                physicsTime = (now - prevTime) / 1_000_000_000.0;
+                prevTime = now;
+                if (leftPressed) {
+                    yaw -= 200f * physicsTime;
+                }
+                if (rightPressed) {
+                    yaw += 200f * physicsTime;
+                }
+                if (upArrowPressed) {
+                    pitch -= 200f * physicsTime;
+                }
+                if (downArrowPressed) {
+                    pitch += 200f * physicsTime;
+                }
+                prevFramePos = new Vector3f(position);
+                float heightOfTerrain = terrain.getHeightOfTerrainNotInterpolated(this.position.x, this.position.z);
+                currentHeightOfTerrain = heightOfTerrain;
+                if (isJumping || position.y <= heightOfTerrain) {
+                    fallStartTime = -1;
+                }
+                if (isJumping) {
+                    double t = System.nanoTime() - jumpStartTime;
+                    t /= 200000000;
+                    this.position.y = (float) (((double) -1 / 2 * GRAVITY * Math.pow(t, 2) + (t * 1.7f) + jumpHeight));
+                } else if (position.y > heightOfTerrain && !isCollided) {
+                    if (fallStartTime == -1) {
+                        fallStartTime = 0;
+                        fallHeight = position.y;
+                    }
+                    this.position.y = (float) (-GRAVITY * Math.pow(fallStartTime, 2) * 13) + fallHeight;
+                    fallStartTime += physicsTime;
+                }
+                WorldObjectData worldObjectData = Main.getDisplayManager().getRenderer().getWorldObjectData();
+                boolean hasCollided = false;
+                if (wPressed) {
+                    position.z -= (float) (movementSpeed * Math.cos(Math.toRadians(yaw)) * physicsTime);
+                    position.x += (float) (movementSpeed * Math.sin(Math.toRadians(yaw)) * physicsTime);
+                }
+                if (dPressed) {
+                    position.z -= (float) (movementSpeed * Math.cos(Math.toRadians(yaw + 90)) * physicsTime);
+                    position.x += (float) (movementSpeed * Math.sin(Math.toRadians(yaw + 90)) * physicsTime);
+                }
+                if (aPressed) {
+                    position.z += (float) (movementSpeed * Math.cos(Math.toRadians(yaw + 90)) * physicsTime);
+                    position.x -= (float) (movementSpeed * Math.sin(Math.toRadians(yaw + 90)) * physicsTime);
+                }
+                if (sPressed) {
+                    position.z += (float) (movementSpeed * Math.cos(Math.toRadians(yaw)) * physicsTime);
+                    position.x -= (float) (movementSpeed * Math.sin(Math.toRadians(yaw)) * physicsTime);
+                }
+                if (spacePressed && !isJumping) {
+                    jump();
+                }
+                Vector3f movementVector = new Vector3f(position).sub(prevFramePos).div(numIterations);
+                position = new Vector3f(prevFramePos);
+                ArrayList<TriangleGroup> triangleGroups = worldObjectData.rayCastNearbyTrianglesWithCollisionsEnabled(position, new Vector3f(movementVector));
+                for (int i = 0; i < numIterations; i++) {
+                    position.add(movementVector);
+                    hasCollided = playerCapsule.resolveCollisions(triangleGroups, position, movementVector, 20);
+                }
 
-        crouching = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
-        sprinting = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
-        if (crouching) {
-            movementSpeed = 5f;
-        } else if (sprinting) {
-            movementSpeed = 20f;
-        } else {
-            movementSpeed = 15f;
+//                Vector3f movementVector = new Vector3f(position).sub(prevFramePos);
+//                position = new Vector3f(prevFramePos);
+//                if (movementVector.length() > 0.0001f) {
+//                    ArrayList<TriangleGroup> triangleGroups = worldObjectData.rayCastNearbyTrianglesWithCollisionsEnabled(position, new Vector3f(movementVector));
+//                    CollisionHit hit = playerCapsule.sweepCapsule(triangleGroups, movementVector, position);
+//                    position.add(new Vector3f(movementVector).mul(hit.t()));
+//                    Vector3f remaining = new Vector3f(movementVector).mul(1.0f - hit.t() / movementVector.length());
+//                    Vector3f slide = remaining.sub(new Vector3f(hit.normal()).mul(remaining.dot(hit.normal())));
+//                    position.add(slide);
+//                    hasCollided = playerCapsule.resolveCollisions(triangleGroups, position, movementVector, 20);
+//                }
+                if (position.y < heightOfTerrain - 7) {
+                    isJumping = false;
+                    position.y = heightOfTerrain;
+                }
+                finalPosition = new Vector3f(position);
+
+                if (!isCollided && hasCollided) {
+                    fallStartTime = -1;
+                    isJumping = false;
+                    isCollided = true;
+                } else if (!hasCollided) {
+                    isCollided = false;
+                }
+
+
+                crouching = leftShiftPressed;
+                sprinting = leftControlPressed;
+                if (crouching) {
+                    movementSpeed = 5f;
+                } else if (sprinting) {
+                    movementSpeed = 20f;
+                } else {
+                    movementSpeed = 15f;
+                }
+                return new Object();
+            }, DisplayManager.getPhysicsThread()).thenAccept(_ -> {
+                isMoving = false;
+            });
         }
 
 
@@ -198,6 +257,13 @@ public class Player {
         renderer.setHeldItem(item);
     }
 
+    public float getYOffset() {
+        return yOffset;
+    }
+
+    public void setYOffset(float yOffset) {
+        this.yOffset = yOffset;
+    }
 
     public boolean isHoldingItem() {
         return this.heldItem != null;

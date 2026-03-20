@@ -12,6 +12,7 @@ uniform vec3 lightColor;
 uniform mat4 inversePlayerViewMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 toShadowMapSpace;
+uniform int shadowMode;
 
 in vec2 pass_textureCoords;
 
@@ -29,6 +30,7 @@ const float shineDamper = 20.0;
 
 void main(void){
     vec4 color = texture(textureSampler, pass_textureCoords);
+
     if (color.a == 0) {
       out_Color = color;
       return;
@@ -36,48 +38,50 @@ void main(void){
 
     vec4 viewPos = texture(gPosition, pass_textureCoords);
 	  vec4 worldPosition = inversePlayerViewMatrix * viewPos;
+	  float lightFactor;
+    if (shadowMode == 0) {
+      vec4 shadowCoords = toShadowMapSpace * worldPosition;
+      vec3 projCoords = shadowCoords.xyz / shadowCoords.w;
+
+      float objectNearestLight = texture(shadowMap, projCoords.xy).r;
 
 
-    //vec4 shadowCoords = toShadowMapSpace * worldPosition;
+      float distance = length(viewPos.xyz);
+      distance = distance - (shadowDistance - transitionDistance);
+      distance = distance / transitionDistance;
+      shadowCoords.w = clamp(1 - distance, 0.0, 1.0);
 
 
-    //vec3 projCoords = shadowCoords.xyz / shadowCoords.w;
+      float pcfFactor = 0;
+      vec2 texSize = vec2(textureSize(shadowMap, 0));
+      vec2 texelSize = 1.0 / texSize;
 
-    //float objectNearestLight = texture(shadowMap, projCoords.xy).r;
+      for (int i = -pcfDistance; i <= pcfDistance; i++) {
+        for (int j = -pcfDistance; j <= pcfDistance; j++) {
+              float objectNearestLight = texture(shadowMap, projCoords.xy + vec2(i, j) * texelSize).r;
+              if (projCoords.z > objectNearestLight) {
+                  pcfFactor++;
+              }
+          }
 
+      }
 
-    //float distance = length(viewPos.xyz);
-    //distance = distance - (shadowDistance - transitionDistance);
-    //distance = distance / transitionDistance;
-    //shadowCoords.w = clamp(1 - distance, 0.0, 1.0);
+      pcfFactor /= totalTexels;
 
-
-    //float pcfFactor = 0;
-    //vec2 texSize = vec2(textureSize(shadowMap, 0));
-    //vec2 texelSize = 1.0 / texSize;
-
-   // for (int i = -pcfDistance; i <= pcfDistance; i++) {
-      //  for (int j = -pcfDistance; j <= pcfDistance; j++) {
-            //float objectNearestLight = texture(shadowMap, projCoords.xy + vec2(i, j) * texelSize).r;
-            //if (projCoords.z > objectNearestLight) {
-          //      pcfFactor++;
-        //    }
-      //  }
-
-    //}
-
-    //pcfFactor /= totalTexels;
-
-    //float lightFactor = 1.0 - (pcfFactor * shadowCoords.w) * 0.2;
+      lightFactor = 1.0 - (pcfFactor * shadowCoords.w) * 0.25;
 
 
+
+      if (lightPosition.y < -100) {
+          out_Color = vec4(color.rgb * lightFactor, 1);
+          //out_Color = vec4(color.rgb, 1);
+          return;
+      }
+    } else {
+      lightFactor = smoothstep(0.2, 0.9, texture(raytracedShadows, pass_textureCoords).r) * 0.25 + 0.75;
+    }
 
     //specular
-    //if (lightPosition.y < -100) {
-        //out_Color = vec4(color.rgb * lightFactor, 1);
-        //out_Color = vec4(color.rgb, 1);
-        //return;
-    //}
     vec3 lightPosView = (viewMatrix * vec4(lightPosition, 1.0)).xyz;
 
     vec3 normal = normalize(texture(gNormal, pass_textureCoords).xyz);
@@ -101,7 +105,6 @@ void main(void){
     vec3 specularHighlights = lightColor * specular * reflectivity;
 
 
-    vec3 lightFactor = max(texture(raytracedShadows, pass_textureCoords).rgb, vec3(0.8));
     vec3 light = color.rgb * lightFactor;
     if (length(light) < 0.7) {
         light += specularHighlights;

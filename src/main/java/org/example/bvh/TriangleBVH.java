@@ -68,7 +68,7 @@ public class TriangleBVH extends AbstractBVH<Triangle> {
 
     @Override
     protected ArrayList<Triangle>[] partition(BVHNode<Triangle> node, ArrayList<Triangle> triangles) {
-        float numBins = 16;
+        float numBins = 64;
         ArrayList<Triangle>[] finalPartition;
         sortTriangles(triangles, node);
         if (triangles.size() > numBins) {

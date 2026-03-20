@@ -161,7 +161,9 @@ public class Sunlight extends Light {
         }
 
 
-        return loader.loadToVao(vertices, texCoords, indices, normals, "Sun");
+        Model model = loader.loadToVao(vertices, texCoords, indices, normals, "Sun");
+        model.setHasRaytracedShadows(false);
+        return model;
     }
 
 

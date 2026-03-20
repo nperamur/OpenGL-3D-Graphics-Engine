@@ -25,9 +25,9 @@ public class GameMath {
         Vector3f cameraPos = player.getPosition();
         Vector3f negativeCameraPos;
         if (player.isCrouching()) {
-            negativeCameraPos = new Vector3f(-cameraPos.x, -cameraPos.y - 1f, -cameraPos.z);
+            negativeCameraPos = new Vector3f(-cameraPos.x, -cameraPos.y - 1f - player.getYOffset(), -cameraPos.z);
         } else {
-            negativeCameraPos = new Vector3f(-cameraPos.x, -cameraPos.y - 1.5f, -cameraPos.z);
+            negativeCameraPos = new Vector3f(-cameraPos.x, -cameraPos.y - 1.5f - player.getYOffset(), -cameraPos.z);
         }
         matrix.translate(negativeCameraPos, matrix);
 

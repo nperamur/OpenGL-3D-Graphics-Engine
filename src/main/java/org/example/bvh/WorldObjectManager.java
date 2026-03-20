@@ -6,6 +6,7 @@ import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class WorldObjectManager implements WorldObjectData {
     private ModelBVH modelBVH;
@@ -59,7 +60,7 @@ public class WorldObjectManager implements WorldObjectData {
 
             Vector3f localPos = new Vector3f(position).mulPosition(worldObject.getInverseTransformationMatrix());
             TriangleGroup triangleGroup = new TriangleGroup(worldObject.getBVH().getIntersectingNodeData(localPos),
-                                                    worldObject.getAABB(),
+                    worldObject.getAABB(),
                     worldObject.getTransformationMatrix(), worldObject.getName());
             nearbyTriangles.add(triangleGroup);
         }

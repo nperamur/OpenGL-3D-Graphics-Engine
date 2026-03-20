@@ -45,6 +45,7 @@ public class VolumetricBlend extends PostProcessEffect {
     @Override
     public void cleanUp() {
         super.cleanUp();
+        glDeleteTextures(originalTexture);
         shader.cleanUp();
     }
 

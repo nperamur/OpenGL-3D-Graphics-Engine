@@ -4,6 +4,7 @@ import imgui.ImGui;
 import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
 import imgui.internal.ImGuiContext;
+import imgui.type.ImInt;
 import org.example.fbo.Gbuffer;
 import org.example.player.Player;
 import org.example.terrain.Terrain;
@@ -19,6 +20,10 @@ import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.*;
 
 import java.util.ArrayList;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.glfw.GLFW.glfwShowWindow;
@@ -35,7 +40,9 @@ public class DisplayManager {
     private final ImGuiImplGlfw imGuiImplGlfw = new ImGuiImplGlfw();
     private final ImGuiImplGl3 imGuiImplGl3 = new ImGuiImplGl3();
 
-
+    private static ExecutorService physicsThreadPool = Executors.newFixedThreadPool(1);
+    private static ExecutorService worldObjectSyncThreadPool = Executors.newFixedThreadPool(1);
+    private BlockingQueue<Runnable> renderQueue = new LinkedBlockingQueue<>();
     private int windowPosX = 100;
     private int windowPosY = 100;
 
@@ -206,6 +213,9 @@ public class DisplayManager {
         Entity testBox = new Entity(new TexturedModel(loader.loadToVao(vertices, textureCoords, indices, new float[0], "Test Box"), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(60, 50, 0), 0, 30, 0, 50);
         renderer.addEntity(testBox);
         renderer.addEntity(sunEntity);
+
+//        Entity sponza = new Entity(new TexturedModel(ModelLoader.load("sponza", loader), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(0, 0, 0), 0, 45, 0, 0.4f);
+//        renderer.addEntity(sponza);
         renderer.syncWorldObjects();
         //renderer.addEntity(new Entity(model, new Vector3f(-1, -5000.7f, -4), 0, 0, 0, 10000));
 //        float[] vertices2 = {
@@ -259,8 +269,11 @@ public class DisplayManager {
 
         float[] stepSize = new float[1];
         stepSize[0] = 3f;
-
+        ImInt shadowMode = new ImInt(1);
         while ( !glfwWindowShouldClose(window) ) {
+            for (Runnable runnable : renderQueue) {
+                runnable.run();
+            }
             boolean f3Pressed = glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS;
 
             if (f3Pressed && !f3PressedLastFrame) {
@@ -272,8 +285,8 @@ public class DisplayManager {
                 imGuiImplGlfw.newFrame();
                 imGuiImplGl3.newFrame();
                 ImGui.newFrame();
-                ImGui.setNextWindowSize(350, 0);
-                ImGui.setNextWindowSizeConstraints(350, 0, 350, Float.MAX_VALUE);
+                ImGui.setNextWindowSize(370, 0);
+                ImGui.setNextWindowSizeConstraints(370, 0, 370, Float.MAX_VALUE);
                 if (ImGui.begin("Config")) {
                     ImGui.text("fps:" + 1/frameTime);
                     if(ImGui.collapsingHeader("Volumetric Fog")) {
@@ -282,9 +295,15 @@ public class DisplayManager {
                         ImGui.sliderFloat("Step Size", stepSize, 1f, 6f);
 
                     }
+                    if (ImGui.collapsingHeader("Shadows")) {
+                        ImGui.radioButton("Shadow Map", shadowMode, 0);
+                        ImGui.sameLine();
+                        ImGui.radioButton("Ray Traced", shadowMode, 1);
+                    }
                     if(ImGui.collapsingHeader("Tone Mapping")) {
                         ImGui.sliderFloat("Exposure", exposure, 0.5f, 3f);
                     }
+
                 }
 
                 ImGui.end();
@@ -349,7 +368,6 @@ public class DisplayManager {
             skyColor.x = Math.min(skyColor.x, 1.0f);
             skyColor.y = Math.min(skyColor.y, 1.0f);
             skyColor.z = Math.min(skyColor.z, 1.0f);
-
             renderer.init(skyColor.x, skyColor.y, skyColor.z, 0);
 
 
@@ -359,10 +377,10 @@ public class DisplayManager {
 
             fbos.bindReflectionFrameBuffer();
             float distance = 2 * (player.getPosition().y + 0.5f - Renderer.WATER_Y);
-            player.getPosition().y -= distance;
+            player.setYOffset(-distance);
             player.invertPitch();
             renderer.render(player, new Vector4f(0, 1, 0, -Renderer.WATER_Y));
-            player.getPosition().y += distance;
+            player.setYOffset(0);
             player.invertPitch();
             fbos.unbindCurrentFrameBuffer();
 
@@ -397,6 +415,7 @@ public class DisplayManager {
             renderer.setVolumetricFogDensity(fogDensity[0]);
             renderer.setExposure(exposure[0]);
             renderer.setVolumetricStepSize(stepSize[0]);
+            renderer.setShadowMode(shadowMode.get());
 
             player.move(terrainsArray[(int) (Math.ceil(player.getPosition().x / Terrain.SIZE)) + 1][(int) (Math.ceil(player.getPosition().z / Terrain.SIZE)) + 1]);
             light.updatePosition();
@@ -421,6 +440,10 @@ public class DisplayManager {
     public void close() {
         imGuiImplGl3.shutdown();
         imGuiImplGlfw.shutdown();
+        physicsThreadPool.shutdown();
+        physicsThreadPool.close();
+        worldObjectSyncThreadPool.shutdown();
+        worldObjectSyncThreadPool.close();
         GLFW.glfwMakeContextCurrent(NULL);
         GL.setCapabilities(null);
         ImGui.destroyContext();
@@ -470,6 +493,14 @@ public class DisplayManager {
 
     public Vector3f getSkyColor() {
         return this.skyColor;
+    }
+
+    public static ExecutorService getPhysicsThread() {
+        return physicsThreadPool;
+    }
+
+    public void submitRenderThreadTask(Runnable runnable) {
+        this.renderQueue.add(runnable);
     }
 
 

@@ -217,7 +217,8 @@ void main(void) {
         out_transmittance = vec4(1);
         return;
     }
-    vec3 surfacePos = (inversePlayerViewMatrix * viewPos).xyz;
+    vec4 worldPos = inversePlayerViewMatrix * vec4(viewPos.xyz, 1.0);
+    vec3 surfacePos = worldPos.xyz;
     vec3 rayDir = normalize(surfacePos - cameraPos);
     float maxDist = min(length(surfacePos - cameraPos), totalDistance);
     float offset = rand(floor(pixelCoords) + vec2(randomNumber)) * stepSize * 2;
@@ -241,7 +242,7 @@ void main(void) {
 
         vec3 lightAmount = lightColor * lightStrength * visible * phi;
         accumulation += albedo * (1 - falloff) * lightAmount * transmittance;
-        transmittance *= falloff;
+        transmittance *= visible < 0.1 ? 1.0 : falloff;
     }
     out_color.rgb = vec3(accumulation);
     out_color.a = color.a;

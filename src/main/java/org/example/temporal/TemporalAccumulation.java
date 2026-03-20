@@ -1,4 +1,4 @@
-package org.example.volumetrics;
+package org.example.temporal;
 
 import org.example.Main;
 import org.example.Model;
@@ -6,6 +6,7 @@ import org.example.PostProcessEffect;
 import org.example.Renderer;
 import org.example.fbo.Fbo;
 import org.example.fbo.Gbuffer;
+import org.example.volumetrics.TemporalAccumulationShader;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL11C;
@@ -18,10 +19,9 @@ import static org.lwjgl.opengl.GL11C.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER;
 
-//This file is a Temporal Accumulation specifically made for volumetric effects.
 public class TemporalAccumulation extends PostProcessEffect {
 
-    private VolumetricFrameBuffer historyFbo;
+    private TemporalFrameBuffer historyFbo;
     private TemporalAccumulationShader shader;
 
     private Matrix4f prevViewMatrix;
@@ -32,13 +32,13 @@ public class TemporalAccumulation extends PostProcessEffect {
     private Gbuffer historyGbuffer;
 
     private Matrix4f projectionMatrix = new Matrix4f();
-    private float prevMoveFactor;
-    private float moveFactor;
+
+    private int texture;
 
 
-    public TemporalAccumulation(VolumetricFrameBuffer volumetricFbo, Gbuffer gbuffer) {
-        super(new VolumetricFrameBuffer(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
-        this.historyFbo = volumetricFbo;
+    public TemporalAccumulation(TemporalFrameBuffer historyBuffer, Gbuffer gbuffer) {
+        super(new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
+        this.historyFbo = historyBuffer;
         shader = new TemporalAccumulationShader();
         this.gbuffer = gbuffer;
         shader.init();
@@ -55,14 +55,10 @@ public class TemporalAccumulation extends PostProcessEffect {
         }
         shader.start();
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
-        GL11.glBindTexture(GL_TEXTURE_2D, super.getFbo().getTexture());
-        GL13.glActiveTexture(GL13.GL_TEXTURE1);
-        GL11.glBindTexture(GL_TEXTURE_2D, ((VolumetricFrameBuffer) super.getFbo()).getTransmittanceTexture());
+        GL11.glBindTexture(GL_TEXTURE_2D, texture != 0 ? texture : super.getFbo().getTexture());
         if (historyFbo != null) {
             GL13.glActiveTexture(GL13.GL_TEXTURE2);
             GL11.glBindTexture(GL_TEXTURE_2D, historyFbo.getHistoryTexture());
-            GL13.glActiveTexture(GL13.GL_TEXTURE3);
-            GL11.glBindTexture(GL_TEXTURE_2D, historyFbo.getHistoryTransmittanceTexture());
         }
         GL13.glActiveTexture(GL13.GL_TEXTURE4);
         GL11.glBindTexture(GL_TEXTURE_2D, historyGbuffer.getPositionTexture());
@@ -73,13 +69,11 @@ public class TemporalAccumulation extends PostProcessEffect {
         Matrix4f inverseProjMatrix = new Matrix4f();
         projectionMatrix.invert(inverseProjMatrix);
         shader.loadViewMatrices(prevViewMatrix, viewMatrix, projectionMatrix, inverseViewMatrix, inverseProjMatrix);
-        shader.loadCloudMoveFactors(moveFactor, prevMoveFactor);
         Renderer.renderModel(screenQuad);
         shader.stop();
 
         updateHistoryGBuffer();
 
-        this.prevMoveFactor = moveFactor;
 
 
     }
@@ -93,11 +87,6 @@ public class TemporalAccumulation extends PostProcessEffect {
         historyGbuffer.cleanUp();
     }
 
-    public void setMatrices(Matrix4f prevViewMatrix, Matrix4f viewMatrix, Matrix4f projectionMatrix) {
-        this.prevViewMatrix = prevViewMatrix;
-        this.viewMatrix = viewMatrix;
-        this.projectionMatrix = projectionMatrix;
-    }
 
     private void updateHistoryGBuffer() {
         glBindFramebuffer(GL_FRAMEBUFFER, gbuffer.getId());
@@ -124,7 +113,15 @@ public class TemporalAccumulation extends PostProcessEffect {
 
     }
 
-    public void setCloudMoveFactor(float moveFactor) {
-        this.moveFactor = moveFactor;
+
+    public void setTexture(int texture) {
+        this.texture = texture;
     }
+
+    public void setMatrices(Matrix4f prevViewMatrix, Matrix4f viewMatrix, Matrix4f projectionMatrix) {
+        this.prevViewMatrix = prevViewMatrix;
+        this.viewMatrix = viewMatrix;
+        this.projectionMatrix = projectionMatrix;
+    }
+
 }

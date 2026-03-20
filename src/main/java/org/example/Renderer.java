@@ -39,7 +39,6 @@ import static org.lwjgl.opengl.GL11C.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11C.glClear;
 import static org.lwjgl.opengl.GL15C.GL_READ_WRITE;
-import static org.lwjgl.opengl.GL15C.GL_WRITE_ONLY;
 import static org.lwjgl.opengl.GL42C.GL_FRAMEBUFFER_BARRIER_BIT;
 import static org.lwjgl.opengl.GL42C.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
 import static org.lwjgl.opengl.GL42C.GL_TEXTURE_FETCH_BARRIER_BIT;
@@ -53,6 +52,8 @@ public class Renderer {
     public static final float NEAR_PLANE = 0.1f;
     public static final float FAR_PLANE = 8000;
     public static final float WATER_Y = 0f;
+    private static final int RAY_TRACED_SHADOWS = 1;
+    private static final int SHADOW_MAP = 0;
     private Matrix4f projectionMatrix;
     private ArrayList<Entity> entities = new ArrayList<>();
     private TestShader shader;
@@ -77,6 +78,7 @@ public class Renderer {
     private CombineTextures combineTextures;
     private Gbuffer gbuffer;
     private int noiseTexture;
+    private int shadowMode;
 
     private RaytracedShadows raytracedShadows;
 
@@ -158,7 +160,7 @@ public class Renderer {
         this.raytracedShadows = new RaytracedShadows(light, gbuffer);
         this.raytracedShadows.setSSBOs(triangleSSBO, triangleBvhSSBO, modelBvhSSBO);
         for (Terrain terrain : terrains) {
-            Matrix4f transformation = GameMath.createTransformationMatrix(new Vector3f(terrain.getX(), -1, terrain.getZ()), 0, 0,0, 1);
+            Matrix4f transformation = GameMath.createTransformationMatrix(new Vector3f(terrain.getX(), 0, terrain.getZ()), 0, 0,0, 1);
             Model model = terrain.getModel();
             model.setTransformationMatrix(transformation);
         }
@@ -374,8 +376,11 @@ public class Renderer {
         }
         gbuffer.downSampleAll();
         viewMatrix.invert(invViewMatrix);
-        this.raytracedShadows.setInverseViewMatrix(invViewMatrix);
-        raytracedShadows.render(fullScreenQuad);
+        if (shadowMode == RAY_TRACED_SHADOWS) {
+            this.raytracedShadows.setInverseViewMatrix(invViewMatrix);
+            raytracedShadows.setMatrices(prevViewMatrix, viewMatrix, projectionMatrix);
+            raytracedShadows.render(fullScreenQuad);
+        }
         lightFbo.bindFrameBuffer();
 //        bloom.bindFrameBuffer();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -384,6 +389,7 @@ public class Renderer {
         lightingPassShader.loadViewMatrix(viewMatrix);
         lightingPassShader.loadToShadowMapSpace(shadowRenderer.getToShadowMapSpaceMatrix());
         lightingPassShader.loadInversePlayerViewMatrix(invViewMatrix);
+        lightingPassShader.loadShadowMode(shadowMode);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL_TEXTURE_2D, gbuffer.getTexture());
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
@@ -466,7 +472,7 @@ public class Renderer {
         volumetricLighting.render(fullScreenQuad);
         temporalAccumulation.unbindFrameBuffer();
 
-        temporalAccumulation.setViewMatrices(prevViewMatrix, viewMatrix, projectionMatrix);
+        temporalAccumulation.setMatrices(prevViewMatrix, viewMatrix, projectionMatrix);
         temporalAccumulation.setCloudMoveFactor(cloudMoveFactor);
         volumetricBlend.bindFrameBuffer();
         temporalAccumulation.render(fullScreenQuad);
@@ -483,8 +489,7 @@ public class Renderer {
         vignette.render(fullScreenQuad);
         toneMapping.unbindFrameBuffer();
         toneMapping.render(fullScreenQuad);
-
-        prevViewMatrix = viewMatrix;
+        prevViewMatrix = new Matrix4f(viewMatrix);
 
 
 
@@ -507,7 +512,7 @@ public class Renderer {
     }
 
 
-    public static void renderCompute(float width, float height, int outputTexture, SSBO[] ssbos, int textureFormat, int downScale) {
+    public static void renderCompute(float width, float height, int outputTexture, SSBO[] ssbos, int textureFormat, float downScale) {
         glBindImageTexture(4, outputTexture, 0, false, 0, GL_READ_WRITE, textureFormat);
         int i = 1;
         for (SSBO ssbo : ssbos) {
@@ -591,6 +596,8 @@ public class Renderer {
         triangleBvhSSBO.cleanUp();
         raytracedShadows.cleanUp();
         glDeleteTextures(noiseTexture);
+        glDeleteTextures(waterDudvTexture);
+        glDeleteTextures(waterNormalMap);
     }
 
     public void setVolumetricFogDensity(float density) {
@@ -614,4 +621,7 @@ public class Renderer {
     }
 
 
+    public void setShadowMode(int shadowMode) {
+        this.shadowMode = shadowMode;
+    }
 }

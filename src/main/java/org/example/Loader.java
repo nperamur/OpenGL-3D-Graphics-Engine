@@ -66,6 +66,7 @@ public class Loader {
             pixels = new int[width * height];
             image.getRGB(0, 0, width, height, pixels, 0, width);
         } catch (IOException e) {
+            e.printStackTrace();
             throw new RuntimeException();
         }
 
