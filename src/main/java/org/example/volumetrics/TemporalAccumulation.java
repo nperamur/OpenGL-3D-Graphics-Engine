@@ -32,6 +32,8 @@ public class TemporalAccumulation extends PostProcessEffect {
     private Gbuffer historyGbuffer;
 
     private Matrix4f projectionMatrix = new Matrix4f();
+    private Matrix4f inverseProjMatrix = new Matrix4f();
+    private Matrix4f inverseViewMatrix = new Matrix4f();
     private float prevMoveFactor;
     private float moveFactor;
 
@@ -54,6 +56,7 @@ public class TemporalAccumulation extends PostProcessEffect {
 
         }
         shader.start();
+        shader.loadStrength(0.2f);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL_TEXTURE_2D, super.getFbo().getTexture());
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
@@ -68,10 +71,8 @@ public class TemporalAccumulation extends PostProcessEffect {
         GL11.glBindTexture(GL_TEXTURE_2D, historyGbuffer.getPositionTexture());
         GL13.glActiveTexture(GL13.GL_TEXTURE5);
         GL11.glBindTexture(GL_TEXTURE_2D, gbuffer.getPositionTexture());
-        Matrix4f inverseViewMatrix = new Matrix4f();
-        viewMatrix.invert(inverseViewMatrix);
-        Matrix4f inverseProjMatrix = new Matrix4f();
-        projectionMatrix.invert(inverseProjMatrix);
+        GL13.glActiveTexture(GL13.GL_TEXTURE6);
+        GL11.glBindTexture(GL_TEXTURE_2D, gbuffer.getMotionVectorsTexture());
         shader.loadViewMatrices(prevViewMatrix, viewMatrix, projectionMatrix, inverseViewMatrix, inverseProjMatrix);
         shader.loadCloudMoveFactors(moveFactor, prevMoveFactor);
         Renderer.renderModel(screenQuad);
@@ -97,6 +98,11 @@ public class TemporalAccumulation extends PostProcessEffect {
         this.prevViewMatrix = prevViewMatrix;
         this.viewMatrix = viewMatrix;
         this.projectionMatrix = projectionMatrix;
+    }
+
+    public void setInverseMatrices(Matrix4f inverseProjMatrix, Matrix4f inverseViewMatrix) {
+        this.inverseProjMatrix = inverseProjMatrix;
+        this.inverseViewMatrix = inverseViewMatrix;
     }
 
     private void updateHistoryGBuffer() {
@@ -127,4 +133,5 @@ public class TemporalAccumulation extends PostProcessEffect {
     public void setCloudMoveFactor(float moveFactor) {
         this.moveFactor = moveFactor;
     }
+
 }

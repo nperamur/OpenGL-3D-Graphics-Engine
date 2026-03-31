@@ -17,7 +17,7 @@ import java.util.ArrayList;
 public class PlayerCapsule {
     private float radius;
 
-    private static final int CAPSULE_HEIGHT = 3;
+    private float capsuleHeight;
     private Vector3f base;
 
     private Vector3f tip;
@@ -25,16 +25,16 @@ public class PlayerCapsule {
     private Vector3f axis;
 
 
-    public PlayerCapsule(float radius, Vector3f base) {
+    public PlayerCapsule(float radius, Vector3f base, float capsuleHeight) {
         this.radius = radius;
-
+        this.capsuleHeight = capsuleHeight;
         setPosition(base);
     }
 
     private void setPosition(Vector3f position) {
         Vector3f pos = new Vector3f(position);
-        this.base = new Vector3f(pos.x, pos.y - 0.5f, pos.z);
-        this.tip = new Vector3f(pos.x, pos.y + CAPSULE_HEIGHT, pos.z);
+        this.base = new Vector3f(pos.x, pos.y, pos.z);
+        this.tip = new Vector3f(pos.x, pos.y + capsuleHeight, pos.z);
         this.axis = new Vector3f(tip).sub(base);
         this.axis.normalize();
     }
@@ -47,6 +47,8 @@ public class PlayerCapsule {
     public void setHorizontalRadius(float horizontalRadius) {
         this.radius = horizontalRadius;
     }
+
+
 
 
     private boolean isColliding(Triangle triangle, Matrix4f transformationMatrix) {
@@ -113,39 +115,31 @@ public class PlayerCapsule {
 
         } else {
             rayCastedPos = getRayCastedPos(centroid, base, axis, normal);
-            closestTrianglePoint = getClosestPoint(triangle, p0, p1, p2, rayCastedPos, transformationMatrix);
+            Vector3f trianglePos;
+            if (rayCastedPos.y >= tip.y - radius) {
+                trianglePos = getRayCastedPos(centroid, new Vector3f(tip.x, tip.y - radius, tip.z), normal, normal);
+            } else if (rayCastedPos.y <= base.y + radius) {
+                trianglePos = getRayCastedPos(centroid, new Vector3f(base.x, base.y + radius, base.z), normal, normal);
+            } else {
+                trianglePos = rayCastedPos;
+            }
+            closestTrianglePoint = getClosestPoint(triangle, p0, p1, p2, trianglePos, transformationMatrix);
         }
 
         return inCapsule(closestTrianglePoint);
     }
 
 
-//    public boolean resolveCollisions(ArrayList<Triangle> triangles, Vector3f position, Matrix4f transformationMatrix) {
-//        triangles = new ArrayList<>(triangles);
-//        int numPenetrations = -1;
-//        boolean collision = false;
-//        while (!triangles.isEmpty() && (numPenetrations > 0 || numPenetrations == -1)) {
-//            Penetration maxPenetration = null;
-//            numPenetrations = 0;
-//            for (Triangle triangle : triangles) {
-//                if (isColliding(triangle, transformationMatrix)) {
-//                    Vector3f recorrectedPosition = new Vector3f(position);
-//                    float penetrationDepth = recorrectPosition(recorrectedPosition, triangle, transformationMatrix);
-//                    if (maxPenetration == null || penetrationDepth > maxPenetration.depth()) {
-//                        maxPenetration = new Penetration(penetrationDepth, triangle, recorrectedPosition);
-//                    }
-//                    numPenetrations++;
-//                }
-//            }
-//            if (maxPenetration != null) {
-//                position = maxPenetration.playerPos();
-//                setPosition(position);
-//                collision = true;
-//                triangles.remove(maxPenetration.triangle());
-//            }
-//        }
-//        return collision;
-//    }
+    public boolean isCollided(ArrayList<TriangleGroup> triangleGroups, Vector3f position) {
+        for (TriangleGroup group : triangleGroups) {
+            for (Triangle triangle : group.getTriangles()) {
+                if (isColliding(triangle, group.getTransformationMatrix())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     public boolean resolveCollisions(ArrayList<TriangleGroup> triangleGroups, Vector3f position, Vector3f movementVector, int numIterations) {
         this.setPosition(position);
@@ -233,13 +227,22 @@ public class PlayerCapsule {
             return penetrationDepth;
         } else {
             rayCastedPos = getRayCastedPos(centroid, base, axis, normal);
-            closestTrianglePoint = getClosestPoint(triangle, p0, p1, p2, rayCastedPos, transformationMatrix);
+            Vector3f trianglePos;
+            if (rayCastedPos.y >= tip.y - radius) {
+                trianglePos = getRayCastedPos(centroid, new Vector3f(tip.x, tip.y - radius, tip.z), normal, normal);
+
+            } else if (rayCastedPos.y <= base.y + radius) {
+                trianglePos = getRayCastedPos(centroid, new Vector3f(base.x, base.y + radius, base.z), normal, normal);
+            } else {
+                trianglePos = rayCastedPos;
+            }
+            closestTrianglePoint = getClosestPoint(triangle, p0, p1, p2, trianglePos, transformationMatrix);
         }
         Vector3f referencePoint;
         referencePoint = calculateClosestSegment(closestTrianglePoint,
                 new Vector3f(base.x, base.y + radius, base.z),
                 new Vector3f(tip.x, tip.y - radius, tip.z));
-        float penetrationDepth = closestTrianglePoint.distance(referencePoint);
+        float penetrationDepth = closestTrianglePoint.distance(referencePoint) + 0.0001f;
         Vector3f penetrationNormal = new Vector3f(referencePoint).sub(closestTrianglePoint).normalize();
         if (Float.isNaN(penetrationNormal.lengthSquared()) || penetrationDepth < 0) return -1;
         position.add(new Vector3f(penetrationNormal).mul(Math.max((radius - penetrationDepth) / numIterations, 0)));
@@ -247,7 +250,7 @@ public class PlayerCapsule {
     }
 
     private boolean isPerpendicular(Vector3f rayDir, Vector3f normal) {
-        return Math.abs(new Vector3f(rayDir).dot(normal)) <= 0.08;
+        return Math.abs(new Vector3f(rayDir).dot(normal)) <= 0.01;
     }
 
     private void orientNormal(Vector3f normal, Vector3f pointOnTriangle) {
@@ -611,6 +614,20 @@ public class PlayerCapsule {
         return null;
 
     }
+
+    public Vector3f getBase() {
+        return new Vector3f(this.base);
+    }
+
+    public Vector3f getTip() {
+        return new Vector3f(this.tip);
+    }
+
+    public void setCapsuleHeight(float capsuleHeight) {
+        this.capsuleHeight = capsuleHeight;
+        setPosition(new Vector3f(base.x, base.y, base.z));
+    }
+
 
 
 

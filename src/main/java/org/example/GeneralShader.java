@@ -4,7 +4,7 @@ import org.example.player.Player;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
-public class TestShader extends ShaderProgram {
+public class GeneralShader extends ShaderProgram {
     private static final String VERTEX_PATH = "src/main/resources/vertexShader.vsh";
     private static final String FRAGMENT_PATH = "src/main/resources/fragmentShader.fsh";
     private int locationTransformationMatrix;
@@ -17,7 +17,11 @@ public class TestShader extends ShaderProgram {
 
     private int locationTexture;
 
-    public TestShader() {
+    private int locationPrevTransform;
+
+    private int locationPrevView;
+
+    public GeneralShader() {
         super(VERTEX_PATH, FRAGMENT_PATH);
     }
 
@@ -38,6 +42,8 @@ public class TestShader extends ShaderProgram {
         this.locationLightColor = super.getUniformLocation("lightColor");
         this.locationIsItem = super.getUniformLocation("isItem");
         this.locationTexture = super.getUniformLocation("textureSampler");
+        this.locationPrevTransform = super.getUniformLocation("prevTransform");
+        this.locationPrevView = super.getUniformLocation("prevView");
     }
 
 
@@ -65,6 +71,10 @@ public class TestShader extends ShaderProgram {
         super.loadMatrix(locationTransformationMatrix, matrix);
     }
 
+    public void loadPrevTransform(Matrix4f matrix) {
+        super.loadMatrix(locationPrevTransform, matrix);
+    }
+
     public void loadProjectionMatrix(Matrix4f projection) {
         super.loadMatrix(locationProjectionMatrix, projection);
     }
@@ -82,4 +92,9 @@ public class TestShader extends ShaderProgram {
     public void connectTextureUnits() {
         super.loadInt(locationTexture, 1);
     }
+
+    public void loadPrevView(Matrix4f view) {
+        super.loadMatrix(locationPrevView, view);
+    }
+
 }

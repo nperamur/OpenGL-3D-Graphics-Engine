@@ -116,6 +116,33 @@ public abstract class AbstractBVH<E> {
         return data;
     }
 
+    public ArrayList<E> getIntersectingCapsuleNodeData(Vector3f capsuleStart, Vector3f capsuleEnd, float radius, Vector3f movementVector) {
+        recursionCounter = 0;
+        return getIntersectingCapsuleNodeData(capsuleStart, capsuleEnd, radius, root, new ArrayList<>(), movementVector);
+    }
+
+    private ArrayList<E> getIntersectingCapsuleNodeData(Vector3f capsuleStart, Vector3f capsuleEnd, float radius, BVHNode<E> node, ArrayList<E> data, Vector3f movementVector) {
+        recursionCounter++;
+        if (DEBUG_MODE) {
+            System.out.println(recursionCounter);
+        }
+        AABB boundingBox = AABB.merge(node.getBoundingBox(), AABB.translate(node.getBoundingBox(), movementVector));
+        boolean intersects = boundingBox.intersectsCapsule(capsuleStart, capsuleEnd, radius);
+        if (intersects) {
+            if (node.isLeaf()) {
+                data.addAll(node.getData());
+                return data;
+            }
+            if (node.hasLeft()) {
+                getIntersectingCapsuleNodeData(capsuleStart, capsuleEnd, radius, node.getLeft(), data, movementVector);
+            }
+            if (node.hasRight()) {
+                getIntersectingCapsuleNodeData(capsuleStart, capsuleEnd, radius, node.getRight(), data, movementVector);
+            }
+        }
+        return data;
+    }
+
 
     public ArrayList<E> getRayCastedNodeData(Vector3f position, Vector3f direction) {
         if (DEBUG_MODE) {

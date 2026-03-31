@@ -5,12 +5,15 @@ in vec3 surfaceNormal;
 in vec3 toLightNormal;
 in vec3 pass_position;
 in vec3 viewSpaceNormal;
+in vec4 clipPos;
+in vec4 prevClipPos;
 uniform vec3 lightColor;
 uniform sampler2D textureSampler;
 in vec2 pass_textureCoords;
 layout(location = 0) out vec4 out_Color;
 layout(location = 1) out vec4 normal;
 layout(location = 2) out vec4 position;
+layout(location = 3) out vec4 out_motionVector;
 
 void main(void)
 {
@@ -27,6 +30,5 @@ void main(void)
     normal = vec4(normalize(viewSpaceNormal), 1);
     position = vec4(pass_position, 1);
     out_Color = vec4(texture(textureSampler, pass_textureCoords).rgb * diffuse, 1);
-
-
+    out_motionVector = vec4((clipPos.xy / clipPos.w) - (prevClipPos.xy / prevClipPos.w), 0.0, 1.0);
 }

@@ -1,6 +1,7 @@
 package org.example;
 
 import org.example.fbo.Fbo;
+import org.example.volumetrics.VolumetricFrameBuffer;
 
 public abstract class PostProcessEffect {
     private Fbo fbo;
@@ -26,5 +27,9 @@ public abstract class PostProcessEffect {
 
     public void cleanUp() {
         fbo.cleanUp();
+    }
+
+    protected void setFbo(Fbo fbo) {
+        this.fbo = fbo;
     }
 }

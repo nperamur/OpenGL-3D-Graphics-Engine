@@ -1,9 +1,9 @@
 package org.example.shadow;
 
 import org.example.*;
-import org.example.blur.bilateralblur.BilateralBlur;
 import org.example.fbo.Fbo;
 import org.example.fbo.Gbuffer;
+import org.example.ssbo.SSBO;
 import org.example.temporal.TemporalAccumulation;
 import org.example.temporal.TemporalFrameBuffer;
 import org.joml.Matrix4f;
@@ -27,6 +27,7 @@ public class RaytracedShadows extends PostProcessEffect {
     private SSBO triangleSSBO;
     private SSBO modelBVHSSBO;
     private SSBO triangleBVHSSBO;
+    private SSBO matrixSSBO;
 
     private int trianglesLength;
     private int triangleBVHLength;
@@ -42,6 +43,8 @@ public class RaytracedShadows extends PostProcessEffect {
 
     private Fbo finalFbo;
 
+    private int motionVectors;
+
     private TemporalAccumulation temporal;
     public RaytracedShadows(Light light, Gbuffer gbuffer) {
         super(new TemporalFrameBuffer(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
@@ -53,6 +56,7 @@ public class RaytracedShadows extends PostProcessEffect {
         this.light = light;
         this.gPositionTexture = gbuffer.getPositionTexture();
         this.gNormalTexture = gbuffer.getNormalTexture();
+        this.motionVectors = gbuffer.getMotionVectorsTexture();
         temporal = new TemporalAccumulation((TemporalFrameBuffer) super.getFbo(), gbuffer);
 
     }
@@ -74,17 +78,20 @@ public class RaytracedShadows extends PostProcessEffect {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         GL11.glBindTexture(GL_TEXTURE_2D, texture);
         GL11.glBindTexture(GL_TEXTURE_2D, 0);
-
         glActiveTexture(GL_TEXTURE0);
         GL11.glBindTexture(GL_TEXTURE_2D, gPositionTexture);
         glActiveTexture(GL_TEXTURE1);
         GL11.glBindTexture(GL_TEXTURE_2D, gNormalTexture);
+        glActiveTexture(GL_TEXTURE2);
+        GL11.glBindTexture(GL_TEXTURE_2D, motionVectors);
+        glActiveTexture(GL_TEXTURE3);
+        GL11.glBindTexture(GL_TEXTURE_2D, ((TemporalFrameBuffer) super.getFbo()).getHistoryTexture());
 
         Renderer.renderCompute(
                 Main.getDisplayManager().getWidth(),
                 Main.getDisplayManager().getHeight(),
                 texture,
-                new SSBO[] {triangleSSBO, triangleBVHSSBO, modelBVHSSBO},
+                new SSBO[] {triangleSSBO, triangleBVHSSBO, modelBVHSSBO, matrixSSBO},
                 GL_RGBA16F, DOWNSCALE
         );
 
@@ -126,10 +133,12 @@ public class RaytracedShadows extends PostProcessEffect {
         this.inverseViewMatrix = inverseViewMatrix;
     }
 
-    public void setSSBOs(SSBO triangleSSBO, SSBO triangleBVHSSBO, SSBO modelBVHSSBO) {
+    public void setSSBOs(SSBO triangleSSBO, SSBO triangleBVHSSBO, SSBO modelBVHSSBO, SSBO matrixSSBO) {
         this.triangleBVHSSBO = triangleBVHSSBO;
         this.triangleSSBO = triangleSSBO;
         this.modelBVHSSBO = modelBVHSSBO;
+        this.matrixSSBO = matrixSSBO;
+
     }
 
     public void setArrayLengths(int trianglesLength, int triangleBVHLength, int modelBVHLength) {

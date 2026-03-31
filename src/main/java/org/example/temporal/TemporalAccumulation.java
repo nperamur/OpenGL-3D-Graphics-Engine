@@ -54,6 +54,7 @@ public class TemporalAccumulation extends PostProcessEffect {
 
         }
         shader.start();
+        shader.loadStrength(0.1f);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL_TEXTURE_2D, texture != 0 ? texture : super.getFbo().getTexture());
         if (historyFbo != null) {
@@ -64,6 +65,8 @@ public class TemporalAccumulation extends PostProcessEffect {
         GL11.glBindTexture(GL_TEXTURE_2D, historyGbuffer.getPositionTexture());
         GL13.glActiveTexture(GL13.GL_TEXTURE5);
         GL11.glBindTexture(GL_TEXTURE_2D, gbuffer.getPositionTexture());
+        GL13.glActiveTexture(GL13.GL_TEXTURE6);
+        GL11.glBindTexture(GL_TEXTURE_2D, gbuffer.getMotionVectorsTexture());
         Matrix4f inverseViewMatrix = new Matrix4f();
         viewMatrix.invert(inverseViewMatrix);
         Matrix4f inverseProjMatrix = new Matrix4f();

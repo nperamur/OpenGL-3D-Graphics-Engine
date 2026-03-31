@@ -15,6 +15,8 @@ public class Gbuffer extends Fbo {
     private int positionTexture;
     private int normalTexture;
 
+    private int motionVectorsTexture;
+
     public Gbuffer() {
         super(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.DEPTH_TEXTURE);
         unbindCurrentFrameBuffer();
@@ -30,6 +32,7 @@ public class Gbuffer extends Fbo {
         super.init();
         this.positionTexture = createPositionTextureAttachment(this.getWidth(), this.getHeight());
         this.normalTexture = createNormalTextureAttachment(this.getWidth(), this.getHeight());
+        this.motionVectorsTexture = createMotionVectorsTextureAttachment(this.getWidth(), this.getHeight());
     }
 
 
@@ -64,6 +67,21 @@ public class Gbuffer extends Fbo {
         return texture;
     }
 
+    private int createMotionVectorsTextureAttachment(int width, int height) {
+        int texture = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_RGBA16F, width, height,
+                0, GL11.GL_RGBA, GL11.GL_FLOAT, (ByteBuffer) null);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GL32.glFramebufferTexture(GL30.GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3,
+                texture, 0);
+        GL11.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        GL11.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D,0);
+        return texture;
+    }
+
     @Override
     protected int createFrameBuffer() {
         int frameBuffer = GL30.glGenFramebuffers();
@@ -75,10 +93,11 @@ public class Gbuffer extends Fbo {
 
 
     private void drawBuffers() {
-        IntBuffer drawBuffers = BufferUtils.createIntBuffer(3);
+        IntBuffer drawBuffers = BufferUtils.createIntBuffer(4);
         drawBuffers.put(GL_COLOR_ATTACHMENT0);
         drawBuffers.put(GL_COLOR_ATTACHMENT1);
         drawBuffers.put(GL_COLOR_ATTACHMENT2);
+        drawBuffers.put(GL_COLOR_ATTACHMENT3);
         drawBuffers.flip();
         glDrawBuffers(drawBuffers);
     }
@@ -91,6 +110,8 @@ public class Gbuffer extends Fbo {
             downSample(GL_COLOR_ATTACHMENT0, gbuffer.getId(), gbuffer.getWidth(), gbuffer.getHeight());
             downSample(GL_COLOR_ATTACHMENT1, gbuffer.getId(), gbuffer.getWidth(), gbuffer.getHeight());
             downSample(GL_COLOR_ATTACHMENT2, gbuffer.getId(), gbuffer.getWidth(), gbuffer.getHeight());
+            downSample(GL_COLOR_ATTACHMENT3, gbuffer.getId(), gbuffer.getWidth(), gbuffer.getHeight());
+
         }
     }
 
@@ -128,10 +149,9 @@ public class Gbuffer extends Fbo {
         return this.normalTexture;
     }
 
-
-
-
-
+    public int getMotionVectorsTexture() {
+        return motionVectorsTexture;
+    }
 
     public int getLowResTexture(int index) {
         if (index >= getLowResFbos().size() || index < 0) {
@@ -159,6 +179,7 @@ public class Gbuffer extends Fbo {
         super.cleanUp();
         glDeleteTextures(positionTexture);
         glDeleteTextures(normalTexture);
+        glDeleteTextures(motionVectorsTexture);
         for (Fbo gbuffer : getLowResFbos()) {
             gbuffer.cleanUp();
         }

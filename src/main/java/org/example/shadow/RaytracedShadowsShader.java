@@ -17,6 +17,9 @@ public class RaytracedShadowsShader extends ShaderProgram {
     private int locationNormal;
     private int locationFrameCount;
 
+    private int locationMotionVectors;
+    private int locationPrevShadows;
+
     public RaytracedShadowsShader() {
         super(COMPUTE_FILE);
     }
@@ -35,6 +38,8 @@ public class RaytracedShadowsShader extends ShaderProgram {
         locationInverseViewMatrix = super.getUniformLocation("inverseViewMatrix");
         locationNormal = super.getUniformLocation("gNormal");
         locationFrameCount = super.getUniformLocation("frameCount");
+        locationMotionVectors = super.getUniformLocation("motionVectors");
+        locationPrevShadows = super.getUniformLocation("prevShadows");
     }
 
     public void loadLight(Light light) {
@@ -55,6 +60,8 @@ public class RaytracedShadowsShader extends ShaderProgram {
     protected void connectTextureUnits() {
         super.loadInt(locationPosition, 0);
         super.loadInt(locationNormal, 1);
+        super.loadInt(locationMotionVectors, 2);
+        super.loadInt(locationPrevShadows, 3);
     }
 
     public void loadFrameCount(int frameCount) {

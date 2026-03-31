@@ -51,7 +51,7 @@ public class Player {
         this.yaw = yaw;
         this.roll = roll;
         this.window = window;
-        this.playerCapsule = new PlayerCapsule(1.5f, new Vector3f(this.position));
+        this.playerCapsule = new PlayerCapsule(1f, new Vector3f(this.position), 2.5f);
         GLFW.glfwSetCursorPosCallback(window, (n, xpos, ypos) -> {
             if (locked) {
                 this.yaw += (xpos - prevX) * 0.1;
@@ -67,7 +67,7 @@ public class Player {
     }
 
     public void move(Terrain terrain) {
-        handleInputs(terrain, 20);
+        handleInputs(terrain, 10);
     }
 
     public Vector3f getPosition() {
@@ -193,11 +193,24 @@ public class Player {
                 }
                 Vector3f movementVector = new Vector3f(position).sub(prevFramePos).div(numIterations);
                 position = new Vector3f(prevFramePos);
-                ArrayList<TriangleGroup> triangleGroups = worldObjectData.rayCastNearbyTrianglesWithCollisionsEnabled(position, new Vector3f(movementVector));
+                ArrayList<TriangleGroup> triangleGroups = worldObjectData.getNearbyTrianglesWithCollisionsEnabled(position, playerCapsule, movementVector);
+                boolean collided = false;
+                Vector3f candidate = null;
                 for (int i = 0; i < numIterations; i++) {
+                    if (!playerCapsule.isCollided(triangleGroups, position) && collided) {
+                        candidate = new Vector3f(position);
+                    }
                     position.add(movementVector);
                     hasCollided = playerCapsule.resolveCollisions(triangleGroups, position, movementVector, 20);
+                    if (hasCollided) {
+                        collided = true;
+                    }
+                    triangleGroups = worldObjectData.getNearbyTrianglesWithCollisionsEnabled(position, playerCapsule, movementVector);
+
                 }
+//                if (candidate != null && playerCapsule.isCollided(triangleGroups, position)) {
+//                    position = candidate;
+//                }
 
 //                Vector3f movementVector = new Vector3f(position).sub(prevFramePos);
 //                position = new Vector3f(prevFramePos);
@@ -228,10 +241,13 @@ public class Player {
                 crouching = leftShiftPressed;
                 sprinting = leftControlPressed;
                 if (crouching) {
+                    this.playerCapsule.setCapsuleHeight(2f);
                     movementSpeed = 5f;
                 } else if (sprinting) {
+                    this.playerCapsule.setCapsuleHeight(2.5f);
                     movementSpeed = 20f;
                 } else {
+                    this.playerCapsule.setCapsuleHeight(2.5f);
                     movementSpeed = 15f;
                 }
                 return new Object();
@@ -267,6 +283,10 @@ public class Player {
 
     public boolean isHoldingItem() {
         return this.heldItem != null;
+    }
+
+    public PlayerCapsule getCollisionCapsule() {
+        return playerCapsule;
     }
 
 }

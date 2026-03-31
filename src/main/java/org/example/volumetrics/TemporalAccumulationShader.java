@@ -34,6 +34,9 @@ public class TemporalAccumulationShader extends ShaderProgram {
 
     private int locationInverseViewMatrix;
     private int locationInverseProjectionMatrix;
+    private int locationMotionVectors;
+
+    private int locationStrength;
     public TemporalAccumulationShader() {
         super(VERTEX_PATH, FRAGMENT_PATH);
     }
@@ -62,6 +65,8 @@ public class TemporalAccumulationShader extends ShaderProgram {
         locationCurrPosition = super.getUniformLocation("currPosition");
         locationInverseViewMatrix = super.getUniformLocation("inverseViewMatrix");
         locationInverseProjectionMatrix = super.getUniformLocation("inverseProjectionMatrix");
+        locationMotionVectors = super.getUniformLocation("motionVectors");
+        locationStrength = super.getUniformLocation("strength");
     }
 
     @Override
@@ -72,6 +77,7 @@ public class TemporalAccumulationShader extends ShaderProgram {
         super.loadInt(locationHistoryTransmittance, 3);
         super.loadInt(locationPosition, 4);
         super.loadInt(locationCurrPosition, 5);
+        super.loadInt(locationMotionVectors, 6);
 
     }
 
@@ -86,6 +92,10 @@ public class TemporalAccumulationShader extends ShaderProgram {
     public void loadCloudMoveFactors(float moveFactor, float prevMoveFactor) {
         super.loadFloat(locationMoveFactor, moveFactor);
         super.loadFloat(locationPrevMoveFactor, prevMoveFactor);
+    }
+
+    public void loadStrength(float strength) {
+        super.loadFloat(locationStrength, strength);
     }
 
 

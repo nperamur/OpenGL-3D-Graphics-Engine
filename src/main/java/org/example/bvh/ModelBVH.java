@@ -218,6 +218,22 @@ public class ModelBVH extends AbstractBVH<WorldObject> {
                 (surfaceAreaRight / surfaceAreaParent) * numRight * costIntersection;
     }
 
+    public void refit() {
+        refit(super.getRoot());
+    }
+
+    private void refit(BVHNode<WorldObject> node) {
+        if (node == null) return;
+        refit(node.getLeft());
+        refit(node.getRight());
+        if (node.isLeaf()) {
+            node.setBoundingBox(createAABB(node.getData()));
+        } else {
+            AABB merged = AABB.merge(node.getLeft().getBoundingBox(), node.getRight().getBoundingBox());
+            node.setBoundingBox(merged);
+        }
+    }
+
 
 
 

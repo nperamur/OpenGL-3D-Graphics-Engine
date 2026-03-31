@@ -8,6 +8,12 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform mat4 inverseViewMatrix;
 uniform int frameCount;
+uniform sampler2D motionVectors;
+uniform sampler2D prevShadows;
+
+layout(std430, binding = 5) buffer Transformation {
+   mat4 invTransformMatrices[];
+};
 
 layout(rgba16f, binding = 4) uniform image2D outputImage;
 
@@ -59,6 +65,8 @@ bool raytrace(vec3 rayDir, vec3 shadowOrigin) {
   int modelBVHSkipPointer;
   int triangleBVHSkipPointer;
   vec3 invDir = 1.0 / rayDir;
+  mat4 invMat;
+  vec3 localOrigin;
   while (modelBVHCurrIndex >= 0 && modelBVHCurrIndex < modelBVHLength) {
     //process node
     if (bufferIndex == 0) {
@@ -89,9 +97,9 @@ bool raytrace(vec3 rayDir, vec3 shadowOrigin) {
       }
       if (isLeaf && int(modelBVHData[modelBVHCurrIndex + 8]) > 0) {
         bufferIndex++;
-        triangleBVHCurrIndex = int(modelBVHData[modelBVHCurrIndex + 9] + 0.5) * 10;
+        triangleBVHCurrIndex = int(modelBVHData[modelBVHCurrIndex + 9] + 0.5) * 11;
         numTestModels = int(modelBVHData[modelBVHCurrIndex + 8] + 0.5);
-        stopIndex = triangleBVHCurrIndex + (numTestModels * 10);
+        stopIndex = triangleBVHCurrIndex + (numTestModels * 11);
         modelBVHSkipPointer = int(modelBVHData[modelBVHCurrIndex + 7] + 0.5) * 10;
         continue;
       } else if (isLeaf) {
@@ -107,28 +115,29 @@ bool raytrace(vec3 rayDir, vec3 shadowOrigin) {
           modelBVHCurrIndex = modelBVHSkipPointer;
           continue;
       }
-
+      invMat = invTransformMatrices[int(triangleBVHData[triangleBVHCurrIndex + 10] + 0.5)];
       vec3 min = vec3(triangleBVHData[triangleBVHCurrIndex], triangleBVHData[triangleBVHCurrIndex + 1], triangleBVHData[triangleBVHCurrIndex + 2]);
       vec3 max = vec3(triangleBVHData[triangleBVHCurrIndex + 3], triangleBVHData[triangleBVHCurrIndex + 4], triangleBVHData[triangleBVHCurrIndex + 5]);
-
-      vec3 t1 = (min - shadowOrigin) * invDir;
-      vec3 t2 = (max - shadowOrigin) * invDir;
+      vec3 localInvDir = 1.0 / normalize((invMat * vec4(rayDir, 0.0)).xyz);
+      localOrigin = (invMat * vec4(shadowOrigin, 1.0)).xyz;
+      vec3 t1 = (min - localOrigin) * localInvDir;
+      vec3 t2 = (max - localOrigin) * localInvDir;
       vec3 tMin = vec3(
-          invDir.x < 0.0 ? t2.x : t1.x,
-          invDir.y < 0.0 ? t2.y : t1.y,
-          invDir.z < 0.0 ? t2.z : t1.z
+          localInvDir.x < 0.0 ? t2.x : t1.x,
+          localInvDir.y < 0.0 ? t2.y : t1.y,
+          localInvDir.z < 0.0 ? t2.z : t1.z
       );
       vec3 tMax = vec3(
-          invDir.x < 0.0 ? t1.x : t2.x,
-          invDir.y < 0.0 ? t1.y : t2.y,
-          invDir.z < 0.0 ? t1.z : t2.z
+          localInvDir.x < 0.0 ? t1.x : t2.x,
+          localInvDir.y < 0.0 ? t1.y : t2.y,
+          localInvDir.z < 0.0 ? t1.z : t2.z
       );
       float tNear = max(max(tMin.x, tMin.y), tMin.z);
       float tFar = min(min(tMax.x, tMax.y), tMax.z);
       bool isLeaf = triangleBVHData[triangleBVHCurrIndex + 6] > 0.5 ? true : false;
 
       if (tNear > tFar || tFar < 0.001 || any(isnan(tMin)) || any(isnan(tMax))) {
-         int nextIdx = int(triangleBVHData[triangleBVHCurrIndex + 7] + 0.5) * 10;
+         int nextIdx = int(triangleBVHData[triangleBVHCurrIndex + 7] + 0.5) * 11;
          triangleBVHCurrIndex = nextIdx;
          continue;
       }
@@ -137,14 +146,14 @@ bool raytrace(vec3 rayDir, vec3 shadowOrigin) {
         bufferIndex++;
         numTestTriangles = int(triangleBVHData[triangleBVHCurrIndex + 8] + 0.5);
         triangleCurrIndex = int(triangleBVHData[triangleBVHCurrIndex + 9] + 0.5) * 9;
-        triangleBVHSkipPointer = int(triangleBVHData[triangleBVHCurrIndex + 7] + 0.5) * 10;
+        triangleBVHSkipPointer = int(triangleBVHData[triangleBVHCurrIndex + 7] + 0.5) * 11;
         continue;
       } else if (isLeaf) {
-        int nextIdx = int(triangleBVHData[triangleBVHCurrIndex + 7] + 0.5) * 10;
+        int nextIdx = int(triangleBVHData[triangleBVHCurrIndex + 7] + 0.5) * 11;
         triangleBVHCurrIndex = nextIdx;
         continue;
       }
-      triangleBVHCurrIndex += 10;
+      triangleBVHCurrIndex += 11;
     } else if (bufferIndex == 2) {
       if (numTestTriangles <= 0 || triangleCurrIndex >= trianglesLength) {
         bufferIndex = 1;
@@ -155,9 +164,7 @@ bool raytrace(vec3 rayDir, vec3 shadowOrigin) {
       vec3 p1 = vec3(triangleData[triangleCurrIndex], triangleData[triangleCurrIndex + 1], triangleData[triangleCurrIndex + 2]);
       vec3 p2 = vec3(triangleData[triangleCurrIndex + 3], triangleData[triangleCurrIndex + 4], triangleData[triangleCurrIndex + 5]);
       vec3 p3 = vec3(triangleData[triangleCurrIndex + 6], triangleData[triangleCurrIndex + 7], triangleData[triangleCurrIndex + 8]);
-
-      bool hitTriangle = hitsTriangle(p1, p2, p3, rayDir, shadowOrigin);
-
+      bool hitTriangle = hitsTriangle(p1, p2, p3, normalize((invMat * vec4(rayDir, 0.0)).xyz), localOrigin);
       if (hitTriangle) {
         hasHit = true;
         //imageStore(outputImage, pixel, vec4(1.0, 0.0, 0.0, 1.0));
@@ -203,6 +210,17 @@ void main(void) {
       imageStore(outputImage, pixel, vec4(0.0));
       return;
   }
+
+  //vec2 reprojectedCoords = uv - textureLod(motionVectors, uv, 0.0).xy * 0.5;
+  //float prevLightIntensity = textureLod(prevShadows, reprojectedCoords, 0.0).r;
+  //bool isOffScreen = any(lessThan(reprojectedCoords, vec2(0.0))) ||
+  //                       any(greaterThan(reprojectedCoords, vec2(1.0)));
+  //if ((prevLightIntensity < 0.05f && frameCount > 0) && !isOffScreen) {
+    //imageStore(outputImage, pixel, vec4(vec3(0.0), 1.0));
+    //return;
+  //}
+
+
   vec3 worldPos = (inverseViewMatrix * viewPos).xyz;
 
   vec3 sunDir = normalize(vec3(lightPosition.x, max(lightPosition.y, 5000.0), lightPosition.z));
@@ -225,10 +243,10 @@ void main(void) {
       + tangent * r * cos(theta)
       + bitangent * r * sin(theta));
 
-  vec4 viewNormal = textureLod(gNormal, uv, 0.0);
-  vec3 worldNormal = normalize(mat3(inverseViewMatrix) * viewNormal.xyz);
+  //vec4 viewNormal = textureLod(gNormal, uv, 0.0);
+  //vec3 worldNormal = normalize(mat3(inverseViewMatrix) * viewNormal.xyz);
 
-  float NdotL = max(dot(worldNormal, rayDir), 0.0);
+  //float NdotL = max(dot(worldNormal, rayDir), 0.0);
   //if (NdotL <= -0.05) {
     //  imageStore(outputImage, pixel, vec4(0.0, 0.0, 0.0, 1.0));
       //return;

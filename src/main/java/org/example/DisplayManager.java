@@ -32,6 +32,12 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 public class DisplayManager {
     public static final int WIDTH = 1280;
     public static final int HEIGHT = 720;
+
+    //Amount of ticks in one second
+    public static final int TICK_SPEED = 60;
+
+    private float lastTickTime = System.nanoTime();
+
     private long window;
     private double frameTime;
     private double lastTime;
@@ -104,7 +110,7 @@ public class DisplayManager {
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
         Loader loader = new Loader();
-        TestShader shader = new TestShader();
+        GeneralShader shader = new GeneralShader();
         TerrainShader terrainShader = new TerrainShader();
         ArrayList<Terrain> terrains = new ArrayList<>();
         Terrain[][] terrainsArray = new Terrain[4][4];
@@ -197,25 +203,29 @@ public class DisplayManager {
         TexturedModel model = new TexturedModel(ModelLoader.load("FirstPine", loader), new ModelTexture(loader.loadTexture("pinesTexture")));
 
         //Item entity = new Item(new TexturedModel(ModelLoader.load("soccer_ball", loader), new ModelTexture(loader.loadTexture("soccer_texture"))), 0, 0, 0, 1f);
-
+       this.player = new Player(0, 0, 0, window);
        Entity sunEntity = new Entity(new TexturedModel(light.getSunModel(), new ModelTexture(loader.loadTexture("sun"))), light.getPosition(), 0, 0, 0, 800);
        for (int i = 0; i < 1000; i++) {
             float worldX = (float) Math.random() * Terrain.SIZE * 4 - 2 * Terrain.SIZE;
             float worldZ = (float) Math.random() * Terrain.SIZE * 4 - 2 * Terrain.SIZE;
             float height = terrainsArray[(int) (Math.ceil(worldX / Terrain.SIZE)) + 1][(int) (Math.ceil(worldZ / Terrain.SIZE)) + 1].getHeightOfTerrain(worldX, worldZ);
             if (height > Renderer.WATER_Y) {
-                Entity treeEntity = new Entity(model, new Vector3f(worldX, height - 8, worldZ), 0,0, 0, 1f);
+                Entity treeEntity = new Entity(model, new Vector3f(worldX, height - 18, worldZ), 0,0, 0, 1f);
                 renderer.addEntity(treeEntity);
 //                renderer.addEntity(new Entity(new TexturedModel(loader.loadToVao(vertices, textureCoords, indices, new float[0], "Box " + i), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(worldX + 10, height + 1, worldZ + 10), 0, 0, 0, 1));
             }
        }
 //        renderer.setHeldItem(entity);
-        Entity testBox = new Entity(new TexturedModel(loader.loadToVao(vertices, textureCoords, indices, new float[0], "Test Box"), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(60, 50, 0), 0, 30, 0, 50);
+        Entity testBox = new Entity(new TexturedModel(loader.loadToVao(vertices, textureCoords, indices, new float[0], "Test Box"), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(60, 30, 0), 0, 30, 0, 50);
         renderer.addEntity(testBox);
         renderer.addEntity(sunEntity);
 
 //        Entity sponza = new Entity(new TexturedModel(ModelLoader.load("sponza", loader), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(0, 0, 0), 0, 45, 0, 0.4f);
 //        renderer.addEntity(sponza);
+
+        //Entity sunTemple = new Entity(new TexturedModel(ModelLoader.load("SunTemple", loader), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(0, -20, 0), 0, 0, 0, 10f);
+        //renderer.addEntity(sunTemple);
+
         renderer.syncWorldObjects();
         //renderer.addEntity(new Entity(model, new Vector3f(-1, -5000.7f, -4), 0, 0, 0, 10000));
 //        float[] vertices2 = {
@@ -229,7 +239,6 @@ public class DisplayManager {
 //        };
 //        Model model2 = loader.loadToVao(vertices2, indices2);
 //        Entity entity2 = new Entity(model2, new Vector3f(-500, -3, -500), 0, 0, 0, 1);
-        this.player = new Player(0, 0, 0, window);
 //        player.holdItem(entity, renderer);
         Model fullScreenQuad = loader.loadToVao(new float[] {
                 -1.0f,  1.0f, 0.0f, // Top-left
@@ -279,7 +288,8 @@ public class DisplayManager {
             if (f3Pressed && !f3PressedLastFrame) {
                 inDebugMode = !inDebugMode;
             }
-
+            testBox.increaseRotation(1, 1, 1);
+            //testBox.setPosition(new Vector3f(testBox.getPosition().x + 0.05f, testBox.getPosition().y, testBox.getPosition().z + 0.05f));
             f3PressedLastFrame = f3Pressed;
             if (inDebugMode) {
                 imGuiImplGlfw.newFrame();
@@ -379,7 +389,7 @@ public class DisplayManager {
             float distance = 2 * (player.getPosition().y + 0.5f - Renderer.WATER_Y);
             player.setYOffset(-distance);
             player.invertPitch();
-            renderer.render(player, new Vector4f(0, 1, 0, -Renderer.WATER_Y));
+            renderer.render(player, new Vector4f(0, 1, 0, -Renderer.WATER_Y), false);
             player.setYOffset(0);
             player.invertPitch();
             fbos.unbindCurrentFrameBuffer();
@@ -387,12 +397,12 @@ public class DisplayManager {
 
             //refraction
             fbos.bindRefractionFrameBuffer();
-            renderer.render(player, new Vector4f(0, -1, 0, Renderer.WATER_Y));
+            renderer.render(player, new Vector4f(0, -1, 0, Renderer.WATER_Y), false);
             fbos.unbindCurrentFrameBuffer();
 
             //regular scene
             gbuffer.bindFrameBuffer();
-            renderer.render(player, new Vector4f(0, -1, 0, 100));
+            renderer.render(player, new Vector4f(0, -1, 0, 10000), true);
             gbuffer.unbindCurrentFrameBuffer();
 
             //postProcessing
@@ -418,6 +428,23 @@ public class DisplayManager {
             renderer.setShadowMode(shadowMode.get());
 
             player.move(terrainsArray[(int) (Math.ceil(player.getPosition().x / Terrain.SIZE)) + 1][(int) (Math.ceil(player.getPosition().z / Terrain.SIZE)) + 1]);
+//            physicsThreadPool.execute(() -> {
+//                float timeForOneTick = 1.0f / TICK_SPEED;
+//                long now = System.nanoTime();
+//                double elapsed = (now - lastTickTime) / 1_000_000_000.0;
+//                lastTickTime = now;
+//                ArrayList<Entity> entities = renderer.getEntities();
+//                for (Entity entity : entities) {
+//                    float remainingTime = (float) elapsed;
+//                    for (float i = 0; i < elapsed; i += timeForOneTick) {
+//                        entity.tick(timeForOneTick, 10);
+//                        remainingTime -= timeForOneTick;
+//                    }
+//                    if (remainingTime > 0) {
+//                        entity.tick(remainingTime, 10);
+//                    }
+//                }
+//            });
             light.updatePosition();
             glfwSwapBuffers(window); // swap the color buffers
             frameTime = GLFW.glfwGetTime() - lastTime;

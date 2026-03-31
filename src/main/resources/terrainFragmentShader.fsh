@@ -15,10 +15,13 @@ in vec3 toLightNormal;
 in vec3 toCameraVector;
 in vec3 pass_position;
 in vec3 viewSpaceNormal;
+in vec4 clipPos;
+in vec4 prevClipPos;
 
 layout(location = 0) out vec4 out_Color;
 layout(location = 1) out vec4 normal;
 layout(location = 2) out vec4 position;
+layout(location = 3) out vec4 out_motionVector;
 
 void main(void)
 {
@@ -44,4 +47,6 @@ void main(void)
     out_Color = vec4((vec4(diffuse, 1.0) * totalColor).rgb, 1);
     normal = vec4(normalize(viewSpaceNormal), 1);
     position = vec4(pass_position, 1);
+    out_motionVector = vec4((clipPos.xy / clipPos.w) - (prevClipPos.xy / prevClipPos.w), 0.0, 1.0);
+
 }

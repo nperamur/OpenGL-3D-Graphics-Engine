@@ -14,6 +14,9 @@ uniform mat4 transformationMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;
 uniform vec3 lightPosition;
+uniform mat4 prevView;
+out vec4 clipPos;
+out vec4 prevClipPos;
 
 uniform vec4 plane;
 
@@ -30,4 +33,7 @@ void main(void)
 
     mat3 normalMatrix = mat3(viewMatrix);
     viewSpaceNormal = normalize(normalMatrix * normal);
+
+    clipPos = gl_Position;
+    prevClipPos =  projectionMatrix * prevView * transformationMatrix * vec4( position, 1.0 );
 }

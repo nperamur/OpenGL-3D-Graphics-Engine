@@ -22,6 +22,8 @@ public class TerrainShader extends ShaderProgram {
     private int locationShineDamper;
     private int locationReflectivity;
 
+    private int locationPrevView;
+
     public TerrainShader() {
         super(VERTEX_PATH, FRAGMENT_PATH);
     }
@@ -48,6 +50,7 @@ public class TerrainShader extends ShaderProgram {
         this.locationPlane = super.getUniformLocation("plane");
         this.locationShineDamper = super.getUniformLocation("shineDamper");
         this.locationReflectivity = super.getUniformLocation("reflectivity");
+        this.locationPrevView = super.getUniformLocation("prevView");
     }
 
 
@@ -89,5 +92,9 @@ public class TerrainShader extends ShaderProgram {
     public void loadShineVariables(float damper, float reflectivity) {
         super.loadFloat(locationReflectivity, reflectivity);
         super.loadFloat(locationShineDamper, damper);
+    }
+
+    public void loadPrevView(Matrix4f prevView) {
+        super.loadMatrix(locationPrevView, prevView);
     }
 }

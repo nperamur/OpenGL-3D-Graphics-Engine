@@ -5,7 +5,8 @@ uniform sampler2D historyColor;
 uniform sampler2D historyTransmittance;
 uniform sampler2D gPosition;
 uniform sampler2D currPosition;
-
+uniform sampler2D motionVectors;
+uniform float strength;
 uniform mat4 projectionMatrix;
 
 uniform mat4 prevViewMatrix;
@@ -24,11 +25,10 @@ void main(void) {
     float weight;
     vec4 currPos;
     vec4 origPos = texture(currPosition, pass_textureCoords);
-    vec4 reprojectedWorldPos;
+    vec2 reprojectedCoords;
     if (origPos.a != 0) {
-      weight = 0.1f;
-      currPos = vec4(origPos.xyz, 1.0);
-      reprojectedWorldPos = inverseViewMatrix * currPos;
+      weight = strength;
+      reprojectedCoords = pass_textureCoords - texture(motionVectors, pass_textureCoords).xy * 0.5;
     } else {
       ivec2 texSize = textureSize(currPosition, 0);
       vec2 screenSize = vec2(texSize);
@@ -44,16 +44,17 @@ void main(void) {
       vec3 cloudRayDir = normalize(cloudPos.rgb - cameraPos);
       vec3 cloudRay = ((265 - cameraPos.y) / cloudRayDir.y) * cloudRayDir;
       currPos = vec4(vec3(cameraPos.x + cloudRay.x, cameraPos.y + cloudRay.y, cameraPos.z + cloudRay.z), 1);
-      reprojectedWorldPos = currPos;
+      vec4 reprojectedWorldPos = currPos;
 
       weight = 0.08f;
       reprojectedWorldPos = vec4(reprojectedWorldPos.x + (moveFactor - prevMoveFactor) * 100,
                     reprojectedWorldPos.y, reprojectedWorldPos.z + (moveFactor - prevMoveFactor) * 100, reprojectedWorldPos.w);
 
-    }
-    vec4 clipReprojected = projectionMatrix * prevViewMatrix * reprojectedWorldPos;
-    vec2 reprojectedCoords = (clipReprojected / clipReprojected.w).xy * 0.5 + 0.5;
+      vec4 clipReprojected = projectionMatrix * prevViewMatrix * reprojectedWorldPos;
+      reprojectedCoords = (clipReprojected / clipReprojected.w).xy * 0.5 + 0.5;
 
+
+    }
 
     //accumulation
     vec4 volumetricColor = texture(volumetricTexture, pass_textureCoords);

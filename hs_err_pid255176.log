@@ -392,7 +392,7 @@ Compiled method (c2) 51262 2336       4       org.example.Entity::render (61 byt
                       ; - org.lwjgl.opengl.GL20C::glUniformMatrix4fv@26 (line 2494)
                       ; - org.lwjgl.opengl.GL20::glUniformMatrix4fv@3 (line 2380)
                       ; - org.example.ShaderProgram::loadMatrix@14 (line 133)
-                      ; - org.example.TestShader::loadTransformationMatrix@6 (line 65)
+                      ; - org.example.GeneralShader::loadTransformationMatrix@6 (line 65)
                       ; - org.example.Entity::render@26 (line 109)
   0x00000201113db090: acda feff 
 
@@ -617,7 +617,7 @@ Compiled method (c2) 51262 2336       4       org.example.Entity::render (61 byt
   0x00000201113db334: ; ImmutableOopMap {[24]=Oop [32]=Oop }
                       ;*newarray {reexecute=0 rethrow=0 return_oop=1}
                       ; - org.example.ShaderProgram::loadMatrix@2 (line 131)
-                      ; - org.example.TestShader::loadTransformationMatrix@6 (line 65)
+                      ; - org.example.GeneralShader::loadTransformationMatrix@6 (line 65)
                       ; - org.example.Entity::render@26 (line 109)
   0x00000201113db334: c85c 83ff 
 
@@ -636,7 +636,7 @@ Compiled method (c2) 51262 2336       4       org.example.Entity::render (61 byt
                       ; - org.lwjgl.opengl.GL20C::glUniformMatrix4fv@0 (line 2490)
                       ; - org.lwjgl.opengl.GL20::glUniformMatrix4fv@3 (line 2380)
                       ; - org.example.ShaderProgram::loadMatrix@14 (line 133)
-                      ; - org.example.TestShader::loadTransformationMatrix@6 (line 65)
+                      ; - org.example.GeneralShader::loadTransformationMatrix@6 (line 65)
                       ; - org.example.Entity::render@26 (line 109)
   0x00000201113db3a4: 5892 76ff 
 
@@ -667,7 +667,7 @@ Compiled method (c2) 51262 2336       4       org.example.Entity::render (61 byt
                       ; - org.lwjgl.opengl.GL20C::glUniformMatrix4fv@14 (line 2492)
                       ; - org.lwjgl.opengl.GL20::glUniformMatrix4fv@3 (line 2380)
                       ; - org.example.ShaderProgram::loadMatrix@14 (line 133)
-                      ; - org.example.TestShader::loadTransformationMatrix@6 (line 65)
+                      ; - org.example.GeneralShader::loadTransformationMatrix@6 (line 65)
                       ; - org.example.Entity::render@26 (line 109)
   0x00000201113db400: fc91 76ff 
 
@@ -707,7 +707,7 @@ Compiled method (c2) 51262 2336       4       org.example.Entity::render (61 byt
                       ; - org.lwjgl.opengl.GL20C::glUniformMatrix4fv@0 (line 2490)
                       ; - org.lwjgl.opengl.GL20::glUniformMatrix4fv@3 (line 2380)
                       ; - org.example.ShaderProgram::loadMatrix@14 (line 133)
-                      ; - org.example.TestShader::loadTransformationMatrix@6 (line 65)
+                      ; - org.example.GeneralShader::loadTransformationMatrix@6 (line 65)
                       ; - org.example.Entity::render@26 (line 109)
   0x00000201113db440: bc91 76ff 
 

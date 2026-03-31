@@ -126,7 +126,7 @@ public class Fbo {
         this.height = newHeight;
         cleanUp();
         bindFrameBuffer();
-        this.init();
+        init();
         unbindCurrentFrameBuffer();
         for (Fbo fbo : lowResFbos) {
             int childNewWidth = (int)((float) newWidth * fbo.width / prevWidth);

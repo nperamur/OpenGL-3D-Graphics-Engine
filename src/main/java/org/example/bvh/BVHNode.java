@@ -78,6 +78,11 @@ public class BVHNode<E> {
         return boundingBox;
     }
 
+    void setBoundingBox(AABB boundingBox) {
+        this.boundingBox = boundingBox;
+    }
+
+
 
 
 }

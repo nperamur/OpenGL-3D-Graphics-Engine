@@ -13,14 +13,12 @@ import org.example.fbo.Gbuffer;
 import org.example.noise.CloudNoiseGenerator;
 import org.example.player.Player;
 import org.example.shadow.*;
+import org.example.ssbo.SSBO;
 import org.example.terrain.Terrain;
 import org.example.terrain.TerrainShader;
 import org.example.tonemapping.ToneMapping;
 import org.example.vignette.Vignette;
-import org.example.volumetrics.TemporalAccumulation;
-import org.example.volumetrics.VolumetricBlend;
-import org.example.volumetrics.VolumetricFrameBuffer;
-import org.example.volumetrics.VolumetricLighting;
+import org.example.volumetrics.*;
 import org.example.water.FrameBuffers;
 import org.example.water.WaterShader;
 import org.joml.Matrix4f;
@@ -32,6 +30,7 @@ import org.lwjgl.opengl.*;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Random;
 
 import static org.lwjgl.opengl.GL11.*;
@@ -56,7 +55,7 @@ public class Renderer {
     private static final int SHADOW_MAP = 0;
     private Matrix4f projectionMatrix;
     private ArrayList<Entity> entities = new ArrayList<>();
-    private TestShader shader;
+    private GeneralShader shader;
     private ArrayList<Terrain> terrains;
     private TerrainShader terrainShader;
     private WaterShader waterShader;
@@ -85,6 +84,7 @@ public class Renderer {
     private ShadowRenderer shadowRenderer;
     private LightingPassShader lightingPassShader;
     private VolumetricLighting volumetricLighting;
+    private BilateralUpsample bilateralUpsample;
     private ToneMapping toneMapping;
     private Vignette vignette;
     private float volumetricStepSize;
@@ -94,6 +94,8 @@ public class Renderer {
     private VolumetricFrameBuffer historyFbo;
 
     private WorldObjectManager worldObjectManager;
+
+    private ArrayList<Matrix4f> matrices = new ArrayList<>();
 
 
     private TemporalAccumulation temporalAccumulation;
@@ -117,13 +119,14 @@ public class Renderer {
     private SSBO modelBvhSSBO;
 
     private SSBO triangleBvhSSBO;
+    private SSBO matrixSSBO;
 
     private ArrayList<WorldObject> worldObjects = new ArrayList<>();
 
     private static final int SSAO_KERNEL_SIZE = 16;
 
 
-    public Renderer(TestShader shader, TerrainShader terrainShader, WaterShader waterShader, SsaoShader ssaoShader, ArrayList<Terrain> terrains, Sunlight light, TexturedModel waterModel, FrameBuffers fbos, int waterDudvTexture, int waterNormalMap, Gbuffer gbuffer) {
+    public Renderer(GeneralShader shader, TerrainShader terrainShader, WaterShader waterShader, SsaoShader ssaoShader, ArrayList<Terrain> terrains, Sunlight light, TexturedModel waterModel, FrameBuffers fbos, int waterDudvTexture, int waterNormalMap, Gbuffer gbuffer) {
         this.terrainShader = terrainShader;
         this.shader = shader;
         this.terrains = terrains;
@@ -157,8 +160,10 @@ public class Renderer {
         this.triangleSSBO = new SSBO();
         this.modelBvhSSBO = new SSBO();
         this.triangleBvhSSBO = new SSBO();
+        this.matrixSSBO = new SSBO();
+        this.bilateralUpsample = new BilateralUpsample(0.5f, gbuffer);
         this.raytracedShadows = new RaytracedShadows(light, gbuffer);
-        this.raytracedShadows.setSSBOs(triangleSSBO, triangleBvhSSBO, modelBvhSSBO);
+        this.raytracedShadows.setSSBOs(triangleSSBO, triangleBvhSSBO, modelBvhSSBO, matrixSSBO);
         for (Terrain terrain : terrains) {
             Matrix4f transformation = GameMath.createTransformationMatrix(new Vector3f(terrain.getX(), 0, terrain.getZ()), 0, 0,0, 1);
             Model model = terrain.getModel();
@@ -207,7 +212,7 @@ public class Renderer {
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
     }
 
-    public void render(Player player, Vector4f clipPlane) {
+    public void render(Player player, Vector4f clipPlane, boolean renderShadowMap) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
         if (player.isSprinting()) {
             fov = 70;
@@ -221,11 +226,11 @@ public class Renderer {
         shader.loadViewMatrix(viewMatrix);
         shader.loadClipPlane(clipPlane);
         shader.loadProjectionMatrix(projectionMatrix);
+        shader.loadPrevView(prevViewMatrix);
         if (heldItem != null) {
             heldItem.updatePosition();
             heldItem.render(shader);
         }
-        shader.loadClipPlane(new Vector4f(0, 10000, 0f, 0));
         shader.loadLight(light);
         for (Entity entity : entities) {
             entity.render(shader);
@@ -239,6 +244,7 @@ public class Renderer {
         terrainShader.loadProjectionMatrix(projectionMatrix);
         terrainShader.loadClipPlane(clipPlane);
         terrainShader.loadViewMatrix(viewMatrix);
+        terrainShader.loadPrevView(prevViewMatrix);
         for (Terrain terrain : terrains) {
             renderTerrain(terrain);
         }
@@ -268,14 +274,16 @@ public class Renderer {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
 
-        shadowRenderer.bindFrameBuffer();
-        shadowedEntities.clear();
-        shadowedEntities.addAll(entities);
-        if (heldItem != null) {
-            shadowedEntities.add(heldItem);
+        if (renderShadowMap) {
+            shadowRenderer.bindFrameBuffer();
+            shadowedEntities.clear();
+            shadowedEntities.addAll(entities);
+            if (heldItem != null) {
+                shadowedEntities.add(heldItem);
+            }
+            shadowRenderer.render(shadowedEntities);
+            shadowRenderer.unbindFrameBuffer();
         }
-        shadowRenderer.render(shadowedEntities);
-        shadowRenderer.unbindFrameBuffer();
     }
 
     private void renderTerrain(Terrain terrain) {
@@ -329,7 +337,13 @@ public class Renderer {
 
     public void syncWorldObjects() {
         worldObjectManager.syncWorldObjects(worldObjects);
-        BVHFlattenedData data = worldObjectManager.getAllFlattenedBVHData();
+        HashMap<WorldObject, Integer> transforms = new HashMap<>();
+        int i = 0;
+        for (WorldObject worldObject : worldObjects) {
+            transforms.put(worldObject, i);
+            i++;
+        }
+        BVHFlattenedData data = worldObjectManager.getAllFlattenedBVHData(transforms);
 
         float[] vertices = data.vertices();
         float[] triangleNodeData = data.triangleBVH();
@@ -367,6 +381,10 @@ public class Renderer {
 
     public void setHeldItem(Item item) {
         this.heldItem = item;
+        if (!worldObjects.contains(item)) {
+            item.getModel().getRawModel().setHasCollision(false);
+            worldObjects.add(item);
+        }
     }
 
     public void doPostProcessing(Model fullScreenQuad) {
@@ -376,9 +394,18 @@ public class Renderer {
         }
         gbuffer.downSampleAll();
         viewMatrix.invert(invViewMatrix);
+        float[] newModels = this.worldObjectManager.refitModelBVH();
         if (shadowMode == RAY_TRACED_SHADOWS) {
+            matrices.clear();
+            for (WorldObject worldObject : worldObjects) {
+                matrices.add(worldObject.getInverseTransformationMatrix());
+            }
             this.raytracedShadows.setInverseViewMatrix(invViewMatrix);
             raytracedShadows.setMatrices(prevViewMatrix, viewMatrix, projectionMatrix);
+            modelBvhSSBO.bind(3);
+            modelBvhSSBO.upload(newModels);
+            matrixSSBO.bind(5);
+            matrixSSBO.upload(matrices.toArray(new Matrix4f[0]));
             raytracedShadows.render(fullScreenQuad);
         }
         lightFbo.bindFrameBuffer();
@@ -474,6 +501,7 @@ public class Renderer {
 
         temporalAccumulation.setMatrices(prevViewMatrix, viewMatrix, projectionMatrix);
         temporalAccumulation.setCloudMoveFactor(cloudMoveFactor);
+        temporalAccumulation.setInverseMatrices(invProjMatrix, invViewMatrix);
         volumetricBlend.bindFrameBuffer();
         temporalAccumulation.render(fullScreenQuad);
         volumetricBlend.unbindFrameBuffer();
@@ -490,7 +518,6 @@ public class Renderer {
         toneMapping.unbindFrameBuffer();
         toneMapping.render(fullScreenQuad);
         prevViewMatrix = new Matrix4f(viewMatrix);
-
 
 
 
@@ -595,6 +622,8 @@ public class Renderer {
         modelBvhSSBO.cleanUp();
         triangleBvhSSBO.cleanUp();
         raytracedShadows.cleanUp();
+        matrixSSBO.cleanUp();
+        bilateralUpsample.cleanUp();
         glDeleteTextures(noiseTexture);
         glDeleteTextures(waterDudvTexture);
         glDeleteTextures(waterNormalMap);
@@ -624,4 +653,10 @@ public class Renderer {
     public void setShadowMode(int shadowMode) {
         this.shadowMode = shadowMode;
     }
+
+    public ArrayList<Entity> getEntities() {
+        return new ArrayList<>(entities);
+    }
 }
+
+

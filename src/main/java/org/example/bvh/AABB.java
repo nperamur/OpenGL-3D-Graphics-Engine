@@ -55,5 +55,52 @@ public class AABB {
         return 2.0f * (dx * dy + dy * dz + dz * dx);
     }
 
+    public static AABB merge(AABB a, AABB b) {
+        Vector3f min = new Vector3f(
+                Math.min(a.getMin().x, b.getMin().x),
+                Math.min(a.getMin().y, b.getMin().y),
+                Math.min(a.getMin().z, b.getMin().z)
+        );
+        Vector3f max = new Vector3f(
+                Math.max(a.getMax().x, b.getMax().x),
+                Math.max(a.getMax().y, b.getMax().y),
+                Math.max(a.getMax().z, b.getMax().z)
+        );
+        return new AABB(min, max);
+    }
+
+    public static AABB translate(AABB a, Vector3f movement) {
+        return new AABB(new Vector3f(a.getMin()).add(movement), new Vector3f(a.getMax()).add(movement));
+    }
+
+    public boolean intersectsCapsule(Vector3f capsuleStart, Vector3f capsuleEnd, float radius) {
+        float distSq = closestDistanceSquaredToSegment(capsuleStart, capsuleEnd);
+        return distSq <= radius * radius;
+    }
+
+    private float closestDistanceSquaredToSegment(Vector3f segStart, Vector3f segEnd) {
+        Vector3f segDir = new Vector3f(segEnd).sub(segStart);
+        float segLenSq = segDir.lengthSquared();
+        //get dist along capsule axis to move to
+        float t = 0f;
+        if (segLenSq > 1e-10f) {
+            Vector3f aabbCenter = getCenter();
+            t = new Vector3f(aabbCenter).sub(segStart).dot(segDir) / segLenSq;
+            t = Math.max(0f, Math.min(1f, t));
+        }
+
+        Vector3f closest = new Vector3f(segDir).mul(t).add(segStart);
+
+        //clamp into box
+        float cx = Math.max(min.x, Math.min(max.x, closest.x));
+        float cy = Math.max(min.y, Math.min(max.y, closest.y));
+        float cz = Math.max(min.z, Math.min(max.z, closest.z));
+
+        //get diff between original & clamped pos
+        float dx = cx - closest.x;
+        float dy = cy - closest.y;
+        float dz = cz - closest.z;
+        return dx * dx + dy * dy + dz * dz;
+    }
 
 }

@@ -15,8 +15,8 @@ uniform int screenWidth;
 uniform int screenHeight;
 
 int kernelSize = 16;
-float radius = 0.5;
-float bias = 0.05;
+float radius = 0.8;
+float bias = 0.08;
 
 
 
