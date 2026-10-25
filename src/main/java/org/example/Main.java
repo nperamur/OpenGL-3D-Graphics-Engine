@@ -17,10 +17,10 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 public class Main {
     private static DisplayManager displayManager;
     public static void main(String[] args) {
-        Kernel32.INSTANCE.SetPriorityClass(
-                Kernel32.INSTANCE.GetCurrentProcess(),
-                Kernel32.HIGH_PRIORITY_CLASS
-        );
+//        Kernel32.INSTANCE.SetPriorityClass(
+//                Kernel32.INSTANCE.GetCurrentProcess(),
+//                Kernel32.HIGH_PRIORITY_CLASS
+//        );
         displayManager = new DisplayManager();
         displayManager.start();
     }

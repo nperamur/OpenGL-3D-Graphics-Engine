@@ -31,7 +31,7 @@ public class PlayerCapsule {
         setPosition(base);
     }
 
-    private void setPosition(Vector3f position) {
+    public void setPosition(Vector3f position) {
         Vector3f pos = new Vector3f(position);
         this.base = new Vector3f(pos.x, pos.y, pos.z);
         this.tip = new Vector3f(pos.x, pos.y + capsuleHeight, pos.z);
@@ -217,13 +217,13 @@ public class PlayerCapsule {
             movementVector.sub(new Vector3f(normal).mul(vectorDiff));
         }
         Vector3f closestTrianglePoint;
-        if (isPerpendicular(axis, normal) && !(Math.abs(normal.y) > 0.7f)) {
+        if (isPerpendicular(axis, normal)) {
             Vector3f startingPoint = calculateClosestSegmentStartFromSegment(p0, p1, p2, axis, base, normal);
             float normalProj = new Vector3f(startingPoint).dot(normal);
             float axisNormalProj = new Vector3f(base).dot(normal);
             float penetrationDepth =  Math.abs(normalProj - axisNormalProj) + 0.0001f;
             if (Float.isNaN(normal.lengthSquared()) || penetrationDepth < 0) return -1;
-            position.add(new Vector3f(normal).mul((radius - penetrationDepth) / numIterations));
+            position.add(new Vector3f(normal).mul(Math.max((radius - penetrationDepth) / numIterations, 0)));
             return penetrationDepth;
         } else {
             rayCastedPos = getRayCastedPos(centroid, base, axis, normal);

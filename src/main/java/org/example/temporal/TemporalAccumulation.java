@@ -35,14 +35,17 @@ public class TemporalAccumulation extends PostProcessEffect {
 
     private int texture;
 
+    private float strength;
 
-    public TemporalAccumulation(TemporalFrameBuffer historyBuffer, Gbuffer gbuffer) {
+
+    public TemporalAccumulation(TemporalFrameBuffer historyBuffer, Gbuffer gbuffer, float strength) {
         super(new Fbo(Main.getDisplayManager().getWidth(), Main.getDisplayManager().getHeight(), Fbo.NONE));
         this.historyFbo = historyBuffer;
         shader = new TemporalAccumulationShader();
         this.gbuffer = gbuffer;
         shader.init();
         historyGbuffer = new Gbuffer();
+        this.strength = strength;
     }
 
     @Override
@@ -54,7 +57,7 @@ public class TemporalAccumulation extends PostProcessEffect {
 
         }
         shader.start();
-        shader.loadStrength(0.1f);
+        shader.loadStrength(strength);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL_TEXTURE_2D, texture != 0 ? texture : super.getFbo().getTexture());
         if (historyFbo != null) {

@@ -20,7 +20,7 @@ void main(void)
     vec3 unitNormal = normalize(surfaceNormal);
     vec3 unitLightNormal = normalize(toLightNormal);
     float dotProduct = dot(unitNormal, unitLightNormal);
-    float brightness = min(max(dotProduct, 0.3), 0.8);
+    float brightness = min(max(dotProduct, 0.3), 1.0);
     vec3 diffuse = brightness * lightColor;
 
     //float near = 0.1;

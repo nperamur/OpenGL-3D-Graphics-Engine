@@ -394,7 +394,7 @@ public class Renderer {
         }
         gbuffer.downSampleAll();
         viewMatrix.invert(invViewMatrix);
-        float[] newModels = this.worldObjectManager.refitModelBVH();
+        float[] newModels = this.worldObjectManager.getModelBVHFloatArray();
         if (shadowMode == RAY_TRACED_SHADOWS) {
             matrices.clear();
             for (WorldObject worldObject : worldObjects) {
@@ -657,6 +657,11 @@ public class Renderer {
     public ArrayList<Entity> getEntities() {
         return new ArrayList<>(entities);
     }
+
+    public void refitModelBVH() {
+        this.worldObjectManager.refitModelBVH();
+    }
+
 }
 
 

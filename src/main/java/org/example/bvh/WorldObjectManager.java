@@ -6,6 +6,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class WorldObjectManager implements WorldObjectData {
@@ -232,5 +233,8 @@ public class WorldObjectManager implements WorldObjectData {
 
     }
 
+    public float[] getModelBVHFloatArray() {
+        return Arrays.copyOf(modelBVHResult, modelBVHResult.length);
+    }
 
 }

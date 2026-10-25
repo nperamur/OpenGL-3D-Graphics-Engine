@@ -19,6 +19,8 @@ import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.*;
 
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -34,9 +36,9 @@ public class DisplayManager {
     public static final int HEIGHT = 720;
 
     //Amount of ticks in one second
-    public static final int TICK_SPEED = 60;
+    public static final int TICK_SPEED = 20;
 
-    private float lastTickTime = System.nanoTime();
+    private long lastTickTime = System.nanoTime();
 
     private long window;
     private double frameTime;
@@ -59,6 +61,8 @@ public class DisplayManager {
     private boolean f11PressedLastFrame;
     private boolean inDebugMode = true; //Hide with f3
     private boolean f3PressedLastFrame;
+
+    private boolean isProcessingTick = false;
 
     public void start() {
         createWindow();
@@ -210,7 +214,7 @@ public class DisplayManager {
             float worldZ = (float) Math.random() * Terrain.SIZE * 4 - 2 * Terrain.SIZE;
             float height = terrainsArray[(int) (Math.ceil(worldX / Terrain.SIZE)) + 1][(int) (Math.ceil(worldZ / Terrain.SIZE)) + 1].getHeightOfTerrain(worldX, worldZ);
             if (height > Renderer.WATER_Y) {
-                Entity treeEntity = new Entity(model, new Vector3f(worldX, height - 18, worldZ), 0,0, 0, 1f);
+                Entity treeEntity = new Entity(model, new Vector3f(worldX, height - 8, worldZ), 0,0, 0, 1f);
                 renderer.addEntity(treeEntity);
 //                renderer.addEntity(new Entity(new TexturedModel(loader.loadToVao(vertices, textureCoords, indices, new float[0], "Box " + i), new ModelTexture(loader.loadTexture("sun"))), new Vector3f(worldX + 10, height + 1, worldZ + 10), 0, 0, 0, 1));
             }
@@ -279,6 +283,39 @@ public class DisplayManager {
         float[] stepSize = new float[1];
         stepSize[0] = 3f;
         ImInt shadowMode = new ImInt(1);
+        physicsThreadPool.execute(() -> {
+            while (!Thread.interrupted()) {
+                float timeForOneTick = 1.0f / TICK_SPEED;
+                long now = System.nanoTime();
+                double elapsed = (now - lastTickTime) / 1_000_000_000.0;
+                lastTickTime = now;
+                ArrayList<Entity> entities = renderer.getEntities();
+                for (Entity entity : entities) {
+//                    float remainingTime = (float) elapsed;
+//                    for (float i = 0; i < elapsed; i += timeForOneTick) {
+//                        entity.tick(timeForOneTick, 10);
+//                        remainingTime -= timeForOneTick;
+//                    }
+//                    if (remainingTime > 0) {
+//                        entity.tick(remainingTime, 10);
+//                    }
+                    entity.tick((float) elapsed, 1);
+                    entity.resetVelocities();
+                }
+                float remainingTime = (float) elapsed;
+                Terrain terrain = terrainsArray[(int) (Math.ceil(player.getPosition().x / Terrain.SIZE)) + 1][(int) (Math.ceil(player.getPosition().z / Terrain.SIZE)) + 1];
+                //                    for (float i = 0; i < elapsed; i += timeForOneTick) {
+                //                        player.tick(timeForOneTick, 30, terrain);
+                //                        remainingTime -= timeForOneTick;
+                //                    }
+                //                    if (remainingTime > 0) {
+                //                        player.tick(remainingTime, 30, terrain);
+                //                    }
+                renderer.refitModelBVH();
+                player.tick((float) elapsed, 10, terrain);
+
+            }
+        });
         while ( !glfwWindowShouldClose(window) ) {
             for (Runnable runnable : renderQueue) {
                 runnable.run();
@@ -288,7 +325,8 @@ public class DisplayManager {
             if (f3Pressed && !f3PressedLastFrame) {
                 inDebugMode = !inDebugMode;
             }
-            testBox.increaseRotation(1, 1, 1);
+            //testBox.increaseRotation(1, 1, 1);
+            //testBox.increasePosition(0.1f, 0, 0);
             //testBox.setPosition(new Vector3f(testBox.getPosition().x + 0.05f, testBox.getPosition().y, testBox.getPosition().z + 0.05f));
             f3PressedLastFrame = f3Pressed;
             if (inDebugMode) {
@@ -427,24 +465,10 @@ public class DisplayManager {
             renderer.setVolumetricStepSize(stepSize[0]);
             renderer.setShadowMode(shadowMode.get());
 
-            player.move(terrainsArray[(int) (Math.ceil(player.getPosition().x / Terrain.SIZE)) + 1][(int) (Math.ceil(player.getPosition().z / Terrain.SIZE)) + 1]);
-//            physicsThreadPool.execute(() -> {
-//                float timeForOneTick = 1.0f / TICK_SPEED;
-//                long now = System.nanoTime();
-//                double elapsed = (now - lastTickTime) / 1_000_000_000.0;
-//                lastTickTime = now;
-//                ArrayList<Entity> entities = renderer.getEntities();
-//                for (Entity entity : entities) {
-//                    float remainingTime = (float) elapsed;
-//                    for (float i = 0; i < elapsed; i += timeForOneTick) {
-//                        entity.tick(timeForOneTick, 10);
-//                        remainingTime -= timeForOneTick;
-//                    }
-//                    if (remainingTime > 0) {
-//                        entity.tick(remainingTime, 10);
-//                    }
-//                }
-//            });
+
+            player.handleInputs();
+
+
             light.updatePosition();
             glfwSwapBuffers(window); // swap the color buffers
             frameTime = GLFW.glfwGetTime() - lastTime;
@@ -467,7 +491,7 @@ public class DisplayManager {
     public void close() {
         imGuiImplGl3.shutdown();
         imGuiImplGlfw.shutdown();
-        physicsThreadPool.shutdown();
+        physicsThreadPool.shutdownNow();
         physicsThreadPool.close();
         worldObjectSyncThreadPool.shutdown();
         worldObjectSyncThreadPool.close();

@@ -39,7 +39,6 @@ public class ModelLoader {
                     } else if (line.startsWith("v")) {
                         double[] arr = Arrays.stream(line.substring(2).split(" ")).mapToDouble(Double::parseDouble).toArray();
                         vertices.add(new Vector3f((float) arr[0], (float) arr[1], (float) arr[2]));
-
                     } else if (line.startsWith("f")) {
                         if (normals2 == null) {
                             normals2 = new ArrayList<Vector3f>();

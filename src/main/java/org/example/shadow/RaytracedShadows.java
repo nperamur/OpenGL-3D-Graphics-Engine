@@ -57,7 +57,7 @@ public class RaytracedShadows extends PostProcessEffect {
         this.gPositionTexture = gbuffer.getPositionTexture();
         this.gNormalTexture = gbuffer.getNormalTexture();
         this.motionVectors = gbuffer.getMotionVectorsTexture();
-        temporal = new TemporalAccumulation((TemporalFrameBuffer) super.getFbo(), gbuffer);
+        temporal = new TemporalAccumulation((TemporalFrameBuffer) super.getFbo(), gbuffer, 0.1f);
 
     }
 
