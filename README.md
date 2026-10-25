@@ -1,15 +1,18 @@
 This is my custom OpenGL 3D Graphics Engine made in LWJGL. 
 Here is what it currently supports:
-- Volumetric Fog
-- Shadows
+- Volumetric Fog & Clouds
+- Shadows (Both shadowmap & raytraced)
 - SSAO
 - Bloom
 - Vignette
+- Reinhard Tonemapping
 - Procedural Terrain Generation
-- Reflections and Refractions on Water
+- Collision-Detection
+- Planar Reflections and Refractions on Water
 - First Person Player Movement
 - Diffuse and Specular Lighting
 - A Simple Day/Night Cycle
 - A Model Loader for OBJ files
-<img width="2559" height="1444" alt="Screenshot 2025-09-23 222112" src="https://github.com/user-attachments/assets/a64277cd-d4b1-4777-a7bf-0efc55f0f887" />
+<img width="2560" height="1426" alt="Screenshot 2026-02-13 214756" src="https://github.com/user-attachments/assets/c50555be-a1a3-4ea1-b46b-f6bb7580448b" />
+
 
