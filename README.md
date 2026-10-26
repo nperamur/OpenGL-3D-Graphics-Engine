@@ -8,8 +8,8 @@ Here is what it currently supports:
 - Reinhard Tonemapping
 - Procedural Terrain Generation
 - Planar Reflections and Refractions on Water
-- First Person Player Movement
-- Player Collision-Detection
+- First Person Camera Movement
+- Collision Resolution for First Person Camera
 - Diffuse and Specular Lighting
 - A Simple Day/Night Cycle
 - A Model Loader for OBJ files
