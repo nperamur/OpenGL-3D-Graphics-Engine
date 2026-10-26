@@ -7,9 +7,9 @@ Here is what it currently supports:
 - Vignette
 - Reinhard Tonemapping
 - Procedural Terrain Generation
-- Collision-Detection
 - Planar Reflections and Refractions on Water
 - First Person Player Movement
+- Player Collision-Detection
 - Diffuse and Specular Lighting
 - A Simple Day/Night Cycle
 - A Model Loader for OBJ files
